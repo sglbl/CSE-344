@@ -12,6 +12,21 @@
 
 int main(int argc, char *argv[]){
 
+    // char** oper = (char**)malloc(2 * sizeof(char*));
+    // char* string = "/str1/str2/;/str3/str4/";
+
+    // int delimIndex = 0;
+    // char *token = sg_strtok(string, ';', &delimIndex);
+    // oper[0] = token;
+    // for(int i = 0; token != NULL; i++){
+    //     string = string + delimIndex + 1;
+    //     token = sg_strtok(string, ';', &delimIndex);
+    //     oper[i+1] = token;
+    // }
+
+    // for(int i=0; i<2; i++)
+    //     printf("oper[%d] is %s\n",i ,oper[i]);
+
     char buffer[SIZE];          // Creating buffer to store data readed from file.
     char* filePath = argv[2];   // Path of file that is given on the last command line argument
     int readedBytes;            // Number of readed bytes

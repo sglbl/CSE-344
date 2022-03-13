@@ -21,4 +21,6 @@ void sg_strcpy(char* dest, char* source);
 
 void sg_strncpy(char* dest, char* source, int n);
 
+char* sg_strtok(char* str, char delimiter, int *delimIndex);
+
 #endif
