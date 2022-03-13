@@ -1,0 +1,4 @@
+begin
+str2-sTR1
+str4-str3
+endd

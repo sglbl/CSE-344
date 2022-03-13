@@ -4,11 +4,14 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include "my_header.h"
+#include "sg_replacer.h"
+#include "sg_expression_matcher.h"
+
 #define SIZE 4096
 #define STR_SIZE 80
 
 int main(int argc, char *argv[]){
+
     char buffer[SIZE];          // Creating buffer to store data readed from file.
     char* filePath = argv[2];   // Path of file that is given on the last command line argument
     int readedBytes;            // Number of readed bytes
@@ -42,16 +45,15 @@ int main(int argc, char *argv[]){
     }
 
     // PARSING OPERATIONS FROM COMMAND LINE ARGUMENT TO AN ARRAY
-    char** operations = argDivider( argv[1] );
-    int size = sizeof(operations) / sizeof(operations[0]);
-    printf("Size is %d\n", size); //çç
+    int size = 0; //Will be used with call by reference
+    char** operations = argDivider( argv[1], &size );
 
     //  TO THE TEMPORARY FILE
     exchanger(buffer, operations, size);
     // IF OPERATIONS FOUND ON FILE, BUFFER IS CHANGED
 
     // WRITING THE NEW BUFFER INTO THE SAME INPUT FILE
-    while( write(fdWrite, buffer, strlen(buffer)) == -1 && errno == EINTR ){/* Intentionanlly Empty loop to deal interruptions by signal */}
+    while( write(fdWrite, buffer, sg_strlen(buffer)) == -1 && errno == EINTR ){/* Intentionanlly Empty loop to deal interruptions by signal */}
     printf("Succesfully writed to the file\n");
 
     // WRITING IS COMPLETED. CLOSING THE FILE.

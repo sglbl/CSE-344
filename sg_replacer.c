@@ -3,7 +3,8 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include "my_header.h"
+#include "sg_replacer.h"
+#include "sg_expression_matcher.h"
 #define TRUE 1
 #define FALSE 0
 #define STR_SIZE 80
@@ -22,77 +23,95 @@ void printErrorAndExit(){
     exit(0);
 }
 
-char** argDivider(char* arg){
-    if( strncmp(arg, "/", 1) != 0){ 
+char** argDivider(char* arg, int *counter){
+    int i;
+    if( sg_strncmp(arg, "/", 1) != 0){ 
         printErrorAndExit();
     }
 
     //Finding number of operations
     int numberOfOperations = 1;
-    for(int i = 0; i < strlen(arg); i++){
+    for(int i = 0; i < sg_strlen(arg); i++){
         if(arg[i] == ';') 
             numberOfOperations++;  
     }
 
-    printf("Num of operations %d\n", numberOfOperations);
-
     char** operations = (char**)calloc(numberOfOperations, sizeof(char));
     
     char *token = strtok(arg, ";");
-    for(int i = 0; token != NULL; i++){
+    for(i = 0; token != NULL; i++){
         // printf( "Token-> %s\n", token ); //printing each token
         operations[i] = token;
         token = strtok(NULL, ";");
     }
+    *counter = i;
 
     return operations;
+}
+
+void exchangerSquBracket(char* buffer, char* operation, int size){
+    printf("buffer is %s\n", buffer);
+    printf("Op %s\n", operation );
+    int counter;
+    for(counter=0; operation[counter] != ']'; counter++);
+    
+    char** array = (char**)calloc(counter, sizeof(char*));
+    for(int i=0; i<counter; i++){
+        array[i][0] = operation[i];
+        // for(int j=0; j<  )
+
+        // strcpy(...);
+            array[i][0] = operation[i];
+    }
+    
+
 }
 
 void exchanger(char* buffer, char** operations, int size){
     for(int i=0; i<size; i++){                                     // For every operation (that's divided by / symbols on argument )
         char str1[STR_SIZE], str2[STR_SIZE], isI[2];               // Create string variables that will be use to replace
+        // if(operations[i][1] == '['){ // square brackets
+        //     exchangerSquBracket(buffer, operations[i]+2, size);
+        //     // sscanf(operations[i], "/[%s']'/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings
+        //     printf("NEWWW\n");
+        //     printf("1-> %s | 2-> %s | 3-> %s \n", str1, str2, isI);
+        // }
+
         sscanf(operations[i], "/%[^/]/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings
         printf("1-> %s | 2-> %s | 3-> %s \n", str1, str2, isI);
-        replace(buffer, str1, str2);                               // Replacing
+        ReplaceMode mode = NORMAL;
+        if( sg_strncmp(isI, "i", 1) == 0) mode = INSENSTIVE;
+        printf("Mode is %d\n", mode);
+        replace(buffer, str1, str2, mode);                         // Replacing
     }
 
 }
 
-// Using temporary files
-// void useTemp(){
-//     int fdMkstemp;
-//     //Creating temp file
-//     char nameBuffer[] = "/tmp/tempFileBuffer-XXXXXX";
-//     if( (fdMkstemp = mkstemp(nameBuffer) ) == -1 ){
-//         perror("Error while opening the file.\n");
-//         exit(0);
-//     }
-//     unlink(nameBuffer); //Unlinking so name will dissapear.
-//     // OPERATIONS WITH TEMP FILE
-
-//     if(close(fdMkstemp) == -1){
-//         perror("Error while closing mkstemp file");
-//         exit(0);
-//     }
-// }
-
-void replace(char* buffer, char *str1, char *str2){
-    int bufferSize = strlen(buffer);
+void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
+    int bufferSize = sg_strlen(buffer);
     char *newString;
 
     int indexOfStr1 = -1, indexOfStr2 = -1;
     
     // Getting index numbers of strings to replace
     for(int i=0; i<bufferSize; i++){
-        if( strncmp(buffer+i, str1, strlen(str1) ) == 0)
-            indexOfStr1 = i;
-        if( strncmp(buffer+i, str2, strlen(str2) ) == 0)
-            indexOfStr2 = i;
+        if(mode == NORMAL){
+            if( sg_strncmp(buffer+i, str1, sg_strlen(str1) ) == 0)
+                indexOfStr1 = i;
+            if( sg_strncmp(buffer+i, str2, sg_strlen(str2) ) == 0)
+                indexOfStr2 = i;
+        }
+        else if(mode == INSENSTIVE){
+            if( strncasecmp(buffer+i, str1, sg_strlen(str1) ) == 0) //ÇÇ
+                indexOfStr1 = i;
+            if( strncasecmp(buffer+i, str2, sg_strlen(str2) ) == 0)
+                indexOfStr2 = i;
+        }
     }
 
     if(indexOfStr1 == -1 || indexOfStr2 == -1){
-        perror("One of the strings couldn't be found.\n");
-        exit(0);
+        perror("One of the strings couldn't be found on arguments.\n");
+        printErrorAndExit();
     }
 
     // Finding which index is bigger and which smaller because we need to know while we changing
@@ -112,14 +131,14 @@ void replace(char* buffer, char *str1, char *str2){
     // SWAPPING 
     // Let's say we have a text file which contains "a B c D e" and we want to replace B and D position into "newString"
     newString = (char*)calloc(bufferSize, sizeof(char));
-    /* a */ strncpy(newString, buffer, smaller.index);
-    /* D */ strncat(newString, bigger.str, strlen(bigger.str) ); //Concatanating with str2.
-    /* c */ strncat(newString, buffer + smaller.index + strlen(smaller.str),  bigger.index - (smaller.index + strlen(smaller.str)) );
-    /* B */ strncat(newString, smaller.str, strlen(smaller.str) );
-    /* e */ strcat(newString, buffer + bigger.index + strlen(bigger.str) );
+    /* a */ sg_strncpy(newString, buffer, smaller.index);
+    /* D */ newString = sg_strncat(newString, bigger.str, sg_strlen(bigger.str) ); //Concatanating with str2.
+    /* c */ newString = sg_strncat(newString, buffer + smaller.index + sg_strlen(smaller.str),  bigger.index - (smaller.index + sg_strlen(smaller.str)) );
+    /* B */ newString = sg_strncat(newString, smaller.str, sg_strlen(smaller.str) );
+    /* e */ newString = sg_strcat(newString, buffer + bigger.index + sg_strlen(bigger.str) );
 
     printf("New string is:\n'%s'\n", newString);
-    strcpy(buffer, newString); //Changing buffer value that we passed on parameter by using strcpy()
+    sg_strcpy(buffer, newString); //Changing buffer value that we passed on parameter by using strcpy()
 }
 
 int biggerReturner(int indexOfStr1, int indexOfStr2){
