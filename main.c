@@ -5,27 +5,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include "sg_replacer.h"
-#include "sg_expression_matcher.h"
 
 #define SIZE 4096 //çç
 #define STR_SIZE 80
 
 int main(int argc, char *argv[]){
-
-    // char** oper = (char**)malloc(2 * sizeof(char*));
-    // char* string = "/str1/str2/;/str3/str4/";
-
-    // int delimIndex = 0;
-    // char *token = sg_strtok(string, ';', &delimIndex);
-    // oper[0] = token;
-    // for(int i = 0; token != NULL; i++){
-    //     string = string + delimIndex + 1;
-    //     token = sg_strtok(string, ';', &delimIndex);
-    //     oper[i+1] = token;
-    // }
-
-    // for(int i=0; i<2; i++)
-    //     printf("oper[%d] is %s\n",i ,oper[i]);
 
     char buffer[SIZE];          // Creating buffer to store data readed from file.
     char* filePath = argv[2];   // Path of file that is given on the last command line argument
@@ -53,7 +37,7 @@ int main(int argc, char *argv[]){
         exit(4);
     }
 
-    // OPENING THE FILE AGAIN [THIS TIME IN WRITE MODE]
+    // OPENING THE FILE AGAIN [THIS TIME IN WRITE MODE]  [I didn't use RDWR to open and close at the same time because it appends to the end instead of writing from scratch]
     if( (fdWrite = open(filePath, O_WRONLY, S_IWGRP)) == -1 ){
         perror("Error while opening the file to write.\n");
         exit(5);
@@ -63,12 +47,12 @@ int main(int argc, char *argv[]){
     int size = 0; //Will be used with call by reference
     char** operations = argDivider( argv[1], &size );
 
-    //  TO THE TEMPORARY FILE
-    exchanger(buffer, operations, size);
+    // TO THE TEMPORARY FILE
+    replacer(buffer, operations, size);
     // IF OPERATIONS FOUND ON FILE, BUFFER IS CHANGED
 
     // WRITING THE NEW BUFFER INTO THE SAME INPUT FILE
-    while( write(fdWrite, buffer, sg_strlen(buffer)) == -1 && errno == EINTR ){/* Intentionanlly Empty loop to deal interruptions by signal */}
+    while( write(fdWrite, buffer, strlen(buffer)) == -1 && errno == EINTR ){/* Intentionanlly Empty loop to deal interruptions by signal */}
     printf("Succesfully writed to the file\n");
 
     // WRITING IS COMPLETED. CLOSING THE FILE.

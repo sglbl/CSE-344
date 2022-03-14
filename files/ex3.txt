@@ -1,4 +1,4 @@
 begin
-str2-str1
-str4-str3
-endd
+str1
+str3
+end

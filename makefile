@@ -1,14 +1,14 @@
 target: compile
 
-compile:main.c sg_replacer.c sg_replacer.h sg_expression_matcher.c sg_expression_matcher.h
-	gcc main.c sg_replacer.c sg_expression_matcher.c -lm -Wall -o hw1
+compile:main.c sg_replacer.c sg_replacer.h
+	gcc main.c sg_replacer.c -lm -Wall -o hw1
 
-run:		# Example usage while executing --> make run args="1 2 3"
-	gcc main.c sg_replacer.c sg_expression_matcher.c -lm -Wall -o hw1
+run:		# Example usage while executing --> make run args="'/str1/str2/i;/str3/str4/i' files/ex3.txt"
+	gcc main.c sg_replacer.c -lm -Wall -o hw1
 	./hw1 $(args)	
 
 debug:
-	gcc main.c sg_replacer.c sg_expression_matcher.c -g -lm -Wall -o hw1
+	gcc main.c sg_replacer.c -g -lm -Wall -o hw1
 	gdb -q ./hw1 $(args)
 
 warnings:

@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <unistd.h>
 #include "sg_replacer.h"
-#include "sg_expression_matcher.h"
 #define TRUE 1
 #define FALSE 0
 #define STR_SIZE 80
@@ -20,86 +20,56 @@ void printErrorAndExit(){
     "./hw1 '/st*r1/str2/' inputFilePath -> Support 0 or more repetitions of characters like this will match sr1, str1, sttr1 \n"
     "./hw1 '/^Window[sz]*/Linux/i;/close[dD]$/open/' inputFilePath -> it supports arbitrary combinations of the above \n");
     printf("Goodbye!\n");
-    exit(0);
+    exit(EXIT_FAILURE);
 }
 
 char** argDivider(char* arg, int *counter){
     int i;
-    if( sg_strncmp(arg, "/", 1) != 0){ 
+    if( strncmp(arg, "/", 1) != 0){  // If first letter of argument is not '/' exit.
         printErrorAndExit();
     }
 
     //Finding number of operations
     int numberOfOperations = 1;
-    for(i = 0; i < sg_strlen(arg); i++){
+    for(i = 0; i < strlen(arg); i++){
         if(arg[i] == ';') 
             numberOfOperations++;  
     }
 
     char** operations = (char**)calloc(numberOfOperations, sizeof(char));
-    
-    int delimIndex = 0;
-    char *token = sg_strtok(arg, ';', &delimIndex);
-    operations[0] = token;
-    for(i = 0; token != NULL || delimIndex != -1 || i == numberOfOperations - 1; i++){
-        arg = arg + delimIndex + 1;
-        token = sg_strtok(arg, ';', &delimIndex);
-        if(token != NULL)
-            operations[i+1] = token;
+    char *token = strtok(arg, ";");
+    for(i = 0; token != NULL; i++){
+        operations[i] = token;
+        token = strtok(NULL, ";");
     }
-
     *counter = i;
 
     return operations;
 }
 
-void exchangerSquBracket(char* buffer, char* operation, int size){
-    printf("buffer is '%s'\n", buffer);
-    printf("Op %s\n", operation );
-    int counter;
-    for(counter=0; operation[counter] != ']'; counter++); //Finding how many operations are there.
-
-    printf("Counter is %d\n", counter);
-
-    char* stringAfterSqBracket = (char*)calloc(sg_strlen(operation) - counter, sizeof(char));
-    // "sg_strlen(operation) - counter" shows the length between ] and /
-
-    for(int i = counter; i < sg_strlen(operation) && operation[i+1] != '/'; i++){
-        stringAfterSqBracket[i - counter] = operation[i+1];
-    }
-    // If string is [zs]tr1 then stringAfrerSqBracket = tr1
-    //for()
-
-
-    printf("strAfter is %s\n", stringAfterSqBracket);
-    char** array = (char**)calloc(counter, sizeof(char*));
-    for(int i=0; i<counter; i++){
-        array[i] = (char*)calloc(counter, sizeof(char));
-        array[i][0] = operation[i];
-        array[i] = sg_strcat(array[i], stringAfterSqBracket); //For example concatanating z + tr1 && s + tr1
-        printf("%s\n" , array[i]);
-    }
-
-    //replace(buffer, str1, str2, mode);
-
-}
-
-void exchanger(char* buffer, char** operations, int size){
-    for(int i=0; i<size; i++){                                     // For every operation (that's divided by / symbols on argument )
-        char str1[STR_SIZE], str2[STR_SIZE], isI[2];               // Create string variables that will be use to replace
+void replacer(char* buffer, char** operations, int size){
+    // For every operation (that's divided by / symbols on argument )
+    for(int i=0; i<size; i++){                                     
+        ReplaceMode mode = NORMAL;
+        int isInsensitive;
         
-        çç convert to contains for every index.
-        if(operations[i][1] == '['){ // square brackets         
-            exchangerSquBracket(buffer, operations[i]+2, size); //Sending to function without "/[". +2 comes from there.
-            // sscanf(operations[i], "/[%s']'/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings
-            printf("1-> %s | 2-> %s | 3-> %s \n", str1, str2, isI);
+        // If operation contains [ and ] characters than it supports multiple 
+        if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
+            mode = MULTIPLE;
+            squBracketReplacer(buffer, operations[i], size);
+            return;
         }
 
-        sscanf(operations[i], "/%[^/]/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings ççSg_strtok
-        printf("1-> %s | 2-> %s | 3-> %s \n", str1, str2, isI);
-        ReplaceMode mode = NORMAL;
-        printf("isI is %s\n", isI);
-        if( sg_strncmp(isI, "i", 1) == 0) mode = INSENSTIVE;
+        char *str1 = strtok(operations[i], "/");
+        char *str2 = strtok(NULL, "/");
+        if( strtok(NULL, "/") == NULL )
+            isInsensitive = FALSE;
+        else
+            isInsensitive = TRUE; //that means it's 'i' which is insensitive
+
+        printf("1-> %s | 2-> %s | 3-> %d \n", str1, str2, isInsensitive);
+        
+        if(isInsensitive == TRUE) mode = INSENSTIVE;
         printf("Mode is %d\n", mode);
         replace(buffer, str1, str2, mode);                         // Replacing
     }
@@ -107,61 +77,74 @@ void exchanger(char* buffer, char** operations, int size){
 }
 
 void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
-    int bufferSize = sg_strlen(buffer);
-    char *newString;
+    int bufferSize = strlen(buffer);
+    StrInfo str1Info; //To hold size and index 
+    str1Info.index = -1;
 
-    int indexOfStr1 = -1, indexOfStr2 = -1;
-    
-    // Getting index numbers of strings to replace
+    // Getting index of str1 (argument 1) to replace
     for(int i=0; i<bufferSize; i++){
         if(mode == NORMAL){
-            if( sg_strncmp(buffer+i, str1, sg_strlen(str1) ) == 0)
-                indexOfStr1 = i;
-            if( sg_strncmp(buffer+i, str2, sg_strlen(str2) ) == 0)
-                indexOfStr2 = i;
+            if( strncmp(buffer+i, str1, strlen(str1) ) == 0){
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+                printf("Str1 is %s\n", str1);
+                printf("Str2 is %s\n", str2);
+            }
         }
         else if(mode == INSENSTIVE){
-            if( sg_strncasecmp(buffer+i, str1, sg_strlen(str1) ) == 0) //ÇÇ
-                indexOfStr1 = i;
-            if( sg_strncasecmp(buffer+i, str2, sg_strlen(str2) ) == 0)
-                indexOfStr2 = i;
+            if( strncasecmp(buffer+i, str1, strlen(str1) ) == 0){
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+            }
         }
     }
 
-    if(indexOfStr1 == -1 || indexOfStr2 == -1){
-        perror("One of the strings couldn't be found on arguments.\n");
-        printErrorAndExit();
+    if(str1Info.index  == -1){
+        printf("WARNING! %s couldn't be found on file.\n", str1);
+        return;
     }
 
-    // Finding which index is bigger and which smaller because we need to know while we changing
-    StrInfo bigger, smaller;
-    if(biggerReturner(indexOfStr1, indexOfStr2) == indexOfStr2){
-        bigger.index = indexOfStr2;
-        bigger.str = str2;
-        smaller.index = indexOfStr1;
-        smaller.str = str1;
-    }else{
-        bigger.index = indexOfStr1;
-        bigger.str = str1;
-        smaller.index = indexOfStr2;
-        smaller.str = str2;
-    }
-
-    // SWAPPING 
-    // Let's say we have a text file which contains "a B c D e" and we want to replace B and D position into "newString"
-    newString = (char*)calloc(bufferSize, sizeof(char));
-    /* a */ sg_strncpy(newString, buffer, smaller.index);
-    /* D */ newString = sg_strncat(newString, bigger.str, sg_strlen(bigger.str) ); //Concatanating with str2.
-    /* c */ newString = sg_strncat(newString, buffer + smaller.index + sg_strlen(smaller.str),  bigger.index - (smaller.index + sg_strlen(smaller.str)) );
-    /* B */ newString = sg_strncat(newString, smaller.str, sg_strlen(smaller.str) );
-    /* e */ newString = sg_strcat(newString, buffer + bigger.index + sg_strlen(bigger.str) );
-
-    printf("New string is:\n'%s'\n", newString);
-    sg_strcpy(buffer, newString); //Changing buffer value that we passed on parameter by using strcpy()
+    for(int i=0; i< str1Info.size; i++)
+        buffer[str1Info.index + i] = str2[i]; //Changing info in buffer
+    printf("New buffer is '%s'\n", buffer);
 }
 
-int biggerReturner(int indexOfStr1, int indexOfStr2){
-    if(indexOfStr1 >= indexOfStr2) 
-        return indexOfStr1;
-    return indexOfStr2;
+void squBracketReplacer(char* buffer, char* operation, int size){
+    printf("buffer is '%s'\n", buffer);
+    printf("Op %s\n", operation );
+    int counter, counter2;
+
+    for(counter=0; operation[counter] != '['; counter++); //Finding how many square bracket operations are there.
+    for(counter2=0; operation[counter2] != ']'; counter2++);
+    printf("Counter1  is %d\n", counter);
+    printf("Counter2 is %d\n", counter2);
+
+    char* stringAfterSqBracket = (char*)calloc(strlen(operation) - counter, sizeof(char));
+    // "strlen(operation) - counter" shows the length between ] and /
+
+    int i;
+    for(i = counter; i < strlen(operation) && operation[i+1] != '/'; i++){
+        stringAfterSqBracket[i - counter] = operation[i+1];
+    } 
+    i += 2; //Changing cursor to 2 forward.
+
+    printf("Op[i] %c and op[i+1] %c\n", operation[i], operation[i+1] );
+
+    // If string is [zs]tr1 then stringAfrerSqBracket = tr1
+    // Finding str2
+    char* str2 = (char*)calloc(strlen(operation) - i, sizeof(char));
+    for(int j = 0; operation[i+j] != '/'; j++){
+        str2[j] = operation[i+j];
+    }
+    printf("Str2 is %s\n", str2);
+
+    char** array = (char**)calloc(counter, sizeof(char*));
+    for(int i=0; i<counter; i++){
+        array[i] = (char*)calloc(counter, sizeof(char));
+        array[i][0] = operation[i];
+        array[i] = strcat(array[i], stringAfterSqBracket); //For example concatanating z + tr1 && s + tr1
+        printf("a[i] is %s\n" , array[i]);
+        replace(buffer, array[i], str2, MULTIPLE);
+    }
+
 }
