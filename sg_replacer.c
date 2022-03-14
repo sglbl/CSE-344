@@ -31,55 +31,74 @@ char** argDivider(char* arg, int *counter){
 
     //Finding number of operations
     int numberOfOperations = 1;
-    for(int i = 0; i < sg_strlen(arg); i++){
+    for(i = 0; i < sg_strlen(arg); i++){
         if(arg[i] == ';') 
             numberOfOperations++;  
     }
 
     char** operations = (char**)calloc(numberOfOperations, sizeof(char));
     
-    char *token = strtok(arg, ";");
-    for(i = 0; token != NULL; i++){
-        // printf( "Token-> %s\n", token ); //printing each token
-        operations[i] = token;
-        token = strtok(NULL, ";");
+    int delimIndex = 0;
+    char *token = sg_strtok(arg, ';', &delimIndex);
+    operations[0] = token;
+    for(i = 0; token != NULL || delimIndex != -1 || i == numberOfOperations - 1; i++){
+        arg = arg + delimIndex + 1;
+        token = sg_strtok(arg, ';', &delimIndex);
+        if(token != NULL)
+            operations[i+1] = token;
     }
+
     *counter = i;
 
     return operations;
 }
 
 void exchangerSquBracket(char* buffer, char* operation, int size){
-    printf("buffer is %s\n", buffer);
+    printf("buffer is '%s'\n", buffer);
     printf("Op %s\n", operation );
     int counter;
-    for(counter=0; operation[counter] != ']'; counter++);
-    
+    for(counter=0; operation[counter] != ']'; counter++); //Finding how many operations are there.
+
+    printf("Counter is %d\n", counter);
+
+    char* stringAfterSqBracket = (char*)calloc(sg_strlen(operation) - counter, sizeof(char));
+    // "sg_strlen(operation) - counter" shows the length between ] and /
+
+    for(int i = counter; i < sg_strlen(operation) && operation[i+1] != '/'; i++){
+        stringAfterSqBracket[i - counter] = operation[i+1];
+    }
+    // If string is [zs]tr1 then stringAfrerSqBracket = tr1
+    //for()
+
+
+    printf("strAfter is %s\n", stringAfterSqBracket);
     char** array = (char**)calloc(counter, sizeof(char*));
     for(int i=0; i<counter; i++){
+        array[i] = (char*)calloc(counter, sizeof(char));
         array[i][0] = operation[i];
-        // for(int j=0; j<  )
-
-        // strcpy(...);
-            array[i][0] = operation[i];
+        array[i] = sg_strcat(array[i], stringAfterSqBracket); //For example concatanating z + tr1 && s + tr1
+        printf("%s\n" , array[i]);
     }
-    
+
+    //replace(buffer, str1, str2, mode);
 
 }
 
 void exchanger(char* buffer, char** operations, int size){
     for(int i=0; i<size; i++){                                     // For every operation (that's divided by / symbols on argument )
         char str1[STR_SIZE], str2[STR_SIZE], isI[2];               // Create string variables that will be use to replace
-        // if(operations[i][1] == '['){ // square brackets
-        //     exchangerSquBracket(buffer, operations[i]+2, size);
-        //     // sscanf(operations[i], "/[%s']'/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings
-        //     printf("NEWWW\n");
-        //     printf("1-> %s | 2-> %s | 3-> %s \n", str1, str2, isI);
-        // }
+        
+        çç convert to contains for every index.
+        if(operations[i][1] == '['){ // square brackets         
+            exchangerSquBracket(buffer, operations[i]+2, size); //Sending to function without "/[". +2 comes from there.
+            // sscanf(operations[i], "/[%s']'/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings
+            printf("1-> %s | 2-> %s | 3-> %s \n", str1, str2, isI);
+        }
 
-        sscanf(operations[i], "/%[^/]/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings
+        sscanf(operations[i], "/%[^/]/%[^/]/%s", str1, str2, isI); // Parsing every operation into strings ççSg_strtok
         printf("1-> %s | 2-> %s | 3-> %s \n", str1, str2, isI);
         ReplaceMode mode = NORMAL;
+        printf("isI is %s\n", isI);
         if( sg_strncmp(isI, "i", 1) == 0) mode = INSENSTIVE;
         printf("Mode is %d\n", mode);
         replace(buffer, str1, str2, mode);                         // Replacing
@@ -102,9 +121,9 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 indexOfStr2 = i;
         }
         else if(mode == INSENSTIVE){
-            if( strncasecmp(buffer+i, str1, sg_strlen(str1) ) == 0) //ÇÇ
+            if( sg_strncasecmp(buffer+i, str1, sg_strlen(str1) ) == 0) //ÇÇ
                 indexOfStr1 = i;
-            if( strncasecmp(buffer+i, str2, sg_strlen(str2) ) == 0)
+            if( sg_strncasecmp(buffer+i, str2, sg_strlen(str2) ) == 0)
                 indexOfStr2 = i;
         }
     }

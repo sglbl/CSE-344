@@ -23,4 +23,8 @@ void sg_strncpy(char* dest, char* source, int n);
 
 char* sg_strtok(char* str, char delimiter, int *delimIndex);
 
+int sg_strncasecmp(char* str1, char* str2, int n);
+
+char* sg_toLower(char* str);
+
 #endif

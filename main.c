@@ -7,7 +7,7 @@
 #include "sg_replacer.h"
 #include "sg_expression_matcher.h"
 
-#define SIZE 4096
+#define SIZE 4096 //çç
 #define STR_SIZE 80
 
 int main(int argc, char *argv[]){

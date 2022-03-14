@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h> //for memory allocation
-#include <string.h>
 
 /*
 	@author Suleyman Golbol
@@ -103,7 +102,7 @@ char* sg_strtok(char* str, char delimiter, int *delimIndex){
                 return token;
             }
         }
-        if(*delimIndex == sg_strlen(str)){
+        if(*delimIndex >= sg_strlen(str)){
             *delimIndex = -1;
             return str;
         }
@@ -115,26 +114,21 @@ char* sg_strtok(char* str, char delimiter, int *delimIndex){
     }
 }
 
-// char* sg_strtok(char** str, char delimiter){
-//     if(str != NULL){
-//         for(int i=0; i < sg_strlen(*str); i++){
-//             if(*str[i] == delimiter){
-//                 char* token = (char*)malloc(i*sizeof(char));
-//                 char* temp  = (char*)malloc(i*sizeof(char));
-//                 for(int j=0; j< sg_strlen(str); j++)
-//                     temp[j] = str[i+1];
+char* sg_toLower(char* str){
+    int size = sg_strlen(str);
+    char* string = (char*)malloc(size*sizeof(char));
+    for(int i=0; i < size; i++){
+        if( (int)str[i] >= 65 && (int)str[i] <= 90 ) // If str[i] is between A...Z
+            string[i] = str[i] + 32; //converting to lowercase with ascii
+        else
+            string[i] = str[i];
+    }
+    return string;
+}
 
-//                 // sg_strcpy(temp, *str + i + 1);
-//                 printf("temp is %s\n", temp);
-//                 *str = temp;
-//                 printf("token is %s", token);
-//                 // printf("str is %s\n", str);
-//                 return token;
-//             }
-//         }
-//     }
-//     else{  // str = NULL
-//         printf("Error while parsing. Value is null\n");
-//     }
-//     return NULL;
-// }
+int sg_strncasecmp(char* str1, char* str2, int n){
+    char* tmpStr1 = sg_toLower( str1 );
+    char* tmpStr2 = sg_toLower( str2 );
+
+    return sg_strncmp(tmpStr1, tmpStr2, n);
+}
