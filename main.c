@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
     int size = 0; //Will be used with call by reference
     char** operations = argDivider( argv[1], &size );
 
-    // TO THE TEMPORARY FILE
+    // REPLACING ON THE BUFFER VARIABLE
     replacer(buffer, operations, size);
     // IF OPERATIONS FOUND ON FILE, BUFFER IS CHANGED
 

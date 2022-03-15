@@ -51,25 +51,31 @@ void replacer(char* buffer, char** operations, int size){
     // For every operation (that's divided by / symbols on argument )
     for(int i=0; i<size; i++){                                     
         ReplaceMode mode = NORMAL;
-        int isInsensitive;
         
         // If operation contains [ and ] characters than it supports multiple 
         if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
-            mode = MULTIPLE;
-            squBracketReplacer(buffer, operations[i], size);
-            return;
+            multipleReplacer(buffer, ++operations[i] );  // Changing cursor 1 to the right so get rid of '/' symbol
+            continue;
         }
 
+        //printf("Operations[i] is %s\n", operations[i] );
+        // Parsing operations[i] to get the first argument of operation
         char *str1 = strtok(operations[i], "/");
+        // Parsing operations[i] again to get the second argument of operation
         char *str2 = strtok(NULL, "/");
         if( strtok(NULL, "/") == NULL )
-            isInsensitive = FALSE;
+            mode = NORMAL;
         else
-            isInsensitive = TRUE; //that means it's 'i' which is insensitive
+            mode = INSENSITIVE; //that means it's 'i' which is insensitive
 
-        printf("1-> %s | 2-> %s | 3-> %d \n", str1, str2, isInsensitive);
+        printf("1-> %s | 2-> %s | 3-> %d \n", str1, str2, mode);
+
+        if(str1[0] == '^'){
+            mode = LINE_START;
+            ++str1;
+            printf("NEWW Str1 is %s\n", str1);
+        }
         
-        if(isInsensitive == TRUE) mode = INSENSTIVE;
         printf("Mode is %d\n", mode);
         replace(buffer, str1, str2, mode);                         // Replacing
     }
@@ -87,16 +93,31 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
             if( strncmp(buffer+i, str1, strlen(str1) ) == 0){
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
-                printf("Str1 is %s\n", str1);
-                printf("Str2 is %s\n", str2);
             }
         }
-        else if(mode == INSENSTIVE){
+        else if(mode == INSENSITIVE){
             if( strncasecmp(buffer+i, str1, strlen(str1) ) == 0){
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
         }
+        else if(mode == LINE_START){
+            if( (buffer+i-1)[0] == '\n' && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+                // printf("Str1 is %s\n", str1);
+                // printf("Str2 is %s\n", str2);
+            }
+        }
+        else if(mode == LINE_END){
+            // ...
+        }
+
+        if(str1Info.index  != -1){
+            for(int j=0; j < str1Info.size; j++)
+                buffer[str1Info.index + j] = str2[j]; //Changing info in buffer
+        }
+        
     }
 
     if(str1Info.index  == -1){
@@ -104,47 +125,31 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
         return;
     }
 
-    for(int i=0; i< str1Info.size; i++)
-        buffer[str1Info.index + i] = str2[i]; //Changing info in buffer
     printf("New buffer is '%s'\n", buffer);
 }
 
-void squBracketReplacer(char* buffer, char* operation, int size){
-    printf("buffer is '%s'\n", buffer);
-    printf("Op %s\n", operation );
-    int counter, counter2;
+void multipleReplacer(char* buffer, char* operation){
+    char* string;
+    int leftSqIndex, rightSqIndex;
+    
+    ReplaceMode mode = NORMAL;
+    if( operation[strlen(operation) - 1] == 'i' )
+        mode = INSENSITIVE;
 
-    for(counter=0; operation[counter] != '['; counter++); //Finding how many square bracket operations are there.
-    for(counter2=0; operation[counter2] != ']'; counter2++);
-    printf("Counter1  is %d\n", counter);
-    printf("Counter2 is %d\n", counter2);
+    char* arg1 = strtok(operation, "/");
+    int size = strlen(arg1);
+    char *str2 = strtok(NULL, "/");
 
-    char* stringAfterSqBracket = (char*)calloc(strlen(operation) - counter, sizeof(char));
-    // "strlen(operation) - counter" shows the length between ] and /
+    // Finding how many MULTIPLE operations are there.
+    for(leftSqIndex=0; arg1[leftSqIndex] != '['; ++leftSqIndex); 
+    for(rightSqIndex=leftSqIndex; arg1[rightSqIndex] != ']'; ++rightSqIndex); 
 
-    int i;
-    for(i = counter; i < strlen(operation) && operation[i+1] != '/'; i++){
-        stringAfterSqBracket[i - counter] = operation[i+1];
-    } 
-    i += 2; //Changing cursor to 2 forward.
-
-    printf("Op[i] %c and op[i+1] %c\n", operation[i], operation[i+1] );
-
-    // If string is [zs]tr1 then stringAfrerSqBracket = tr1
-    // Finding str2
-    char* str2 = (char*)calloc(strlen(operation) - i, sizeof(char));
-    for(int j = 0; operation[i+j] != '/'; j++){
-        str2[j] = operation[i+j];
-    }
-    printf("Str2 is %s\n", str2);
-
-    char** array = (char**)calloc(counter, sizeof(char*));
-    for(int i=0; i<counter; i++){
-        array[i] = (char*)calloc(counter, sizeof(char));
-        array[i][0] = operation[i];
-        array[i] = strcat(array[i], stringAfterSqBracket); //For example concatanating z + tr1 && s + tr1
-        printf("a[i] is %s\n" , array[i]);
-        replace(buffer, array[i], str2, MULTIPLE);
+    for(int i = 1; i < (rightSqIndex - leftSqIndex); i++){
+        string = (char*)calloc(size, sizeof(char));         // For example if first argument is S[TL]R1 
+        strncat(string, operation, leftSqIndex);            // Adding S to string  
+        strncat(string, operation + leftSqIndex + i, 1);    // Adding T and L to string in different cycles of loop
+        strncat(string, operation + rightSqIndex + 1, size - (rightSqIndex+1) ); // Adding R1 (adding rest of it to string).
+        replace(buffer, string, str2, mode);
     }
 
 }

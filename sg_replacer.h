@@ -13,8 +13,8 @@ typedef struct StrInfo{
 
 typedef enum ReplaceMode{   
     NORMAL,
-    INSENSTIVE,
-    MULTIPLE,
+    INSENSITIVE,
+    // MULTIPLE,
     LINE_START,
     LINE_END,
     REPETITION,
@@ -33,6 +33,6 @@ void replacer(char* buffer, char** operations, int size);
 /* Replaces value of str1 and str2 in buffer and writes back to buffer [using ReplaceMode] */
 void replace(char* buffer, char *str1, char *str2, ReplaceMode mode);
 
-void squBracketReplacer(char* buffer, char* operation, int size);
+void multipleReplacer(char* buffer, char* operation);
 
 #endif
