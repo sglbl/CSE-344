@@ -30,6 +30,8 @@ int main(int argc, char *argv[]){
         perror("File is empty. Goodbye\n");
         exit(3);
     }
+    printf("Buffer is %s\n", buffer);
+    printf("Buffer size is %ld\n", strlen(buffer) );
 
     // READING IS COMPLETED. CLOSING THE FILE
     if( close(fdRead) == -1 ){   

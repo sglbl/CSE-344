@@ -118,7 +118,8 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
             }
         }
         else if(mode == INSENSITIVE_AND_LINE_START){
-            if( (buffer+i-1)[0] == '\n' && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+            if( ( (buffer+i-1)[0] == '\n' || i == 0)  // If it's first line; then it means that it's first line of file or the previous char is '\n'
+                && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
