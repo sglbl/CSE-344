@@ -14,7 +14,6 @@ typedef struct StrInfo{
 typedef enum ReplaceMode{   
     NORMAL,
     INSENSITIVE,
-    // MULTIPLE,
     LINE_START,
     LINE_START_AND_LINE_END,
     INSENSITIVE_AND_LINE_START,

@@ -49,19 +49,36 @@ char** argDivider(char* arg, int *counter){
 
 void replacer(char* buffer, char** operations, int size){
     // For every operation (that's divided by / symbols on argument )
-    for(int i=0; i<size; i++){                                     
+    for(int i=0; i<size; i++){    
+        int isInsensitive;
+        char* tempOperation = (char*)calloc(strlen(operations[i]), sizeof(char));
+        strcpy(tempOperation, operations[i]);                                 
         ReplaceMode mode = NORMAL;
+
+        printf("tempOp is %s\n", tempOperation );
+        // Parsing operations[i] to get the first argument of operation
+        char *str1 = strtok(tempOperation, "/");
+        // Parsing operations[i] again to get the second argument of operation
+        char *str2 = strtok(NULL, "/");
+        // Check if argumant contains 'i', if contains it's insensitive
+        if( strtok(NULL, "/") != NULL ) 
+            isInsensitive = TRUE;
         
-        if(operations[i][1] == '^'){
-            mode = LINE_START;
-            printf("Mode is line start\n");
-            // printf("NEWW Str1 is %s\n", str1);
+        if(str1[0] == '^'){        // if first argumant after / has ^ then it means it should support matching at line starts
+            if(isInsensitive == TRUE)
+                mode = INSENSITIVE_AND_LINE_START;
+            else
+                mode = LINE_START;
+            str1++; //Moving string one char right so get rid of ^
         }
-
-        // int 
-        // for(int j=0; j<strlen(operations[i]); j++)
-        //     if(operations[i][j] != '/')
-
+        if(str1[strlen(str1) - 1] == '$'){  // if first argumant has $ then it means it should support matching at line ends
+            if(mode == LINE_START)
+                mode = LINE_START_AND_LINE_END;
+            else if(mode == INSENSITIVE_AND_LINE_START)
+                mode = INSENSITIVE__LINE_START_AND_LINE_AND;
+            else
+                mode = LINE_END;
+        }
 
         // If operation contains [ and ] characters than it supports multiple 
         if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
@@ -69,29 +86,7 @@ void replacer(char* buffer, char** operations, int size){
             continue;
         }
 
-        //printf("Operations[i] is %s\n", operations[i] );
-        // Parsing operations[i] to get the first argument of operation
-        char *str1 = strtok(operations[i], "/");
-        // Parsing operations[i] again to get the second argument of operation
-        char *str2 = strtok(NULL, "/");
-        if( strtok(NULL, "/") == NULL ){ // If it's false then it's insensitive because strtok will return 'i'
-            if( mode != LINE_START )
-                mode = NORMAL;
-        }
-        else if( mode == LINE_START )
-            mode = INSENSITIVE_AND_LINE_START;
-        else
-            mode = INSENSITIVE; //that means it's 'i' which is insensitive
-
-        if( str1[0] == '^' || str1[strlen(str1) - 1] == '$' ){
-            str1++; //çç $ için size'ı 1 azalt
-            printf("NEW STR1 IS %s\n", str1);
-        }
-        
-
-        printf("1-> %s | 2-> %s | 3-> %d \n", str1, str2, mode);
-        
-        printf("Mode is %d\n", mode);
+        printf("STR1-> %s | STR2-> %s | MODE-> %d \n", str1, str2, mode);
         replace(buffer, str1, str2, mode);                         // Replacing
     }
 
