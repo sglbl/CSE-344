@@ -1,7 +1,8 @@
 begin
-str2
-str4
-str2
+str1
+str3
+sLr1
 sstr5
-str6
+str5
+stl5
 end

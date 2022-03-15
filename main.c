@@ -30,7 +30,7 @@ int main(int argc, char *argv[]){
         perror("File is empty. Goodbye\n");
         exit(3);
     }
-    
+
     // READING IS COMPLETED. CLOSING THE FILE
     if( close(fdRead) == -1 ){   
         perror("Error while closing the file.");

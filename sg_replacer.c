@@ -52,9 +52,20 @@ void replacer(char* buffer, char** operations, int size){
     for(int i=0; i<size; i++){                                     
         ReplaceMode mode = NORMAL;
         
+        if(operations[i][1] == '^'){
+            mode = LINE_START;
+            printf("Mode is line start\n");
+            // printf("NEWW Str1 is %s\n", str1);
+        }
+
+        // int 
+        // for(int j=0; j<strlen(operations[i]); j++)
+        //     if(operations[i][j] != '/')
+
+
         // If operation contains [ and ] characters than it supports multiple 
         if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
-            multipleReplacer(buffer, ++operations[i] );  // Changing cursor 1 to the right so get rid of '/' symbol
+            multipleReplacer(buffer, ++operations[i], mode);  // Changing cursor 1 to the right so get rid of '/' symbol
             continue;
         }
 
@@ -63,18 +74,22 @@ void replacer(char* buffer, char** operations, int size){
         char *str1 = strtok(operations[i], "/");
         // Parsing operations[i] again to get the second argument of operation
         char *str2 = strtok(NULL, "/");
-        if( strtok(NULL, "/") == NULL )
-            mode = NORMAL;
+        if( strtok(NULL, "/") == NULL ){ // If it's false then it's insensitive because strtok will return 'i'
+            if( mode != LINE_START )
+                mode = NORMAL;
+        }
+        else if( mode == LINE_START )
+            mode = INSENSITIVE_AND_LINE_START;
         else
             mode = INSENSITIVE; //that means it's 'i' which is insensitive
 
-        printf("1-> %s | 2-> %s | 3-> %d \n", str1, str2, mode);
-
-        if(str1[0] == '^'){
-            mode = LINE_START;
-            ++str1;
-            printf("NEWW Str1 is %s\n", str1);
+        if( str1[0] == '^' || str1[strlen(str1) - 1] == '$' ){
+            str1++; //çç $ için size'ı 1 azalt
+            printf("NEW STR1 IS %s\n", str1);
         }
+        
+
+        printf("1-> %s | 2-> %s | 3-> %d \n", str1, str2, mode);
         
         printf("Mode is %d\n", mode);
         replace(buffer, str1, str2, mode);                         // Replacing
@@ -105,8 +120,12 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
             if( (buffer+i-1)[0] == '\n' && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
-                // printf("Str1 is %s\n", str1);
-                // printf("Str2 is %s\n", str2);
+            }
+        }
+        else if(mode == INSENSITIVE_AND_LINE_START){
+            if( (buffer+i-1)[0] == '\n' && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
             }
         }
         else if(mode == LINE_END){
@@ -128,13 +147,16 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
     printf("New buffer is '%s'\n", buffer);
 }
 
-void multipleReplacer(char* buffer, char* operation){
+void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
     char* string;
     int leftSqIndex, rightSqIndex;
     
-    ReplaceMode mode = NORMAL;
-    if( operation[strlen(operation) - 1] == 'i' )
-        mode = INSENSITIVE;
+    if( operation[strlen(operation) - 1] == 'i' ){
+        if(mode == LINE_START)
+            mode = INSENSITIVE_AND_LINE_START;
+        else
+            mode = INSENSITIVE;
+    }
 
     char* arg1 = strtok(operation, "/");
     int size = strlen(arg1);
