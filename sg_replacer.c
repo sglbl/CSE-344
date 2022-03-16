@@ -68,14 +68,10 @@ void replacer(char* buffer, char** operations, int size){
         // This function uses bitwise | operator in order to select replace mode in an easier way.
         if(str1[0] == '^'){        // if first argumant after / has ^ then it means it should support matching at line starts
             mode |= LINE_START;
-            printf("LINE MODE IS %d\n", mode);
             str1++; //Moving string one char right so get rid of ^
         }
         if(str1[strlen(str1) - 1] == '$'){  // if first argumant has $ then it means it should support matching at line ends
-            printf("line end supporTTTT\n");
-            printf("Mode1 is %d\n", mode);
             mode |= LINE_END;
-            printf("Mode2 is %d\n", mode);
             str1[ strlen(str1) - 1 ] = '\0'; // Truncate argument by 1 [Removing $ sign from the end]
         }
         
@@ -95,7 +91,6 @@ void replacer(char* buffer, char** operations, int size){
 
         // If operation contains [ and ] characters than it supports multiple 
         if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
-            printf("xx");
             multipleReplacer(buffer, ++operations[i], mode);  // Changing cursor 1 to the right so get rid of '/' symbol
             continue;
         }
@@ -127,7 +122,6 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
         }
         else if( mode == (SENSITIVE | LINE_START) ){
             if( (buffer+i-1)[0] == '\n' && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
-                printf("LINEEE");
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
@@ -170,15 +164,11 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 str1Info.size = strlen(str1);
             }
         }
-        else if( mode == (SENSITIVE | REPETITION) ){
-            printf("REPETITION MODE ON");
-            if( ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
-                && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
-                str1Info.index = i;
-                str1Info.size = strlen(str1);
-            }
+        else if( (mode & REPETITION /* 00001 */ ) == 1 /* Binary: 00001 */ ) { //If mode contains REPETITION then it's 1 when we AND.
+            printf("REPETITION MODE ON\n");
+            repetitionReplacer(buffer, i, str1, str2, mode );
+            continue;
         }
-        
 
         if(str1Info.index  != -1){
             for(int j=0; j < str1Info.size; j++)
@@ -195,6 +185,13 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
     printf("New buffer is '%s'\n", buffer);
 }
 
+void repetitionReplacer(char *buffer, int i, char *str1, char *str2, ReplaceMode mode){
+    
+
+
+
+}
+
 void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
     char* string;
     int leftSqIndex, rightSqIndex;
@@ -205,6 +202,9 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
 
     if(mode == (SENSITIVE | LINE_START) || mode == (SENSITIVE | LINE_START | LINE_END) || mode == (INSENSITIVE | LINE_START) || mode == (INSENSITIVE | LINE_START | LINE_END) )
         arg1++; // If it is a line start operation (^), then we need to increment it to shift right
+
+    if(mode == (SENSITIVE | LINE_END) || mode == (SENSITIVE | LINE_START | LINE_END) || mode == (INSENSITIVE | LINE_END) || mode == (INSENSITIVE | LINE_START | LINE_END) )
+        arg1[ strlen(arg1) - 1 ] = '\0'; // Truncate argument by 1 [Removing $ sign from the end]
 
     // Finding how many MULTIPLE operations are there.
     for(leftSqIndex=0; arg1[leftSqIndex] != '['; ++leftSqIndex); 

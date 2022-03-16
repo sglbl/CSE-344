@@ -32,6 +32,10 @@ void replacer(char* buffer, char** operations, int size);
 /* Replaces value of str1 and str2 in buffer and writes back to buffer [using ReplaceMode] */
 void replace(char* buffer, char *str1, char *str2, ReplaceMode mode);
 
+/* When program sees [ ] characters in argument then calls this function in order to replace multiple arguments */
 void multipleReplacer(char* buffer, char* operation, ReplaceMode mode);
+
+/* When program sees * character in argument then calls this function in order to replace argument with repetition */
+void repetitionReplacer(char *buffer, int i, char *str1, char *str2, ReplaceMode mode);
 
 #endif
