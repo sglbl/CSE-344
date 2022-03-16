@@ -7,7 +7,7 @@
 #include "sg_replacer.h"
 
 #define SIZE 4096 //çç
-#define STR_SIZE 80
+#define STR_SIZE 57
 
 int main(int argc, char *argv[]){
 
@@ -30,7 +30,8 @@ int main(int argc, char *argv[]){
         perror("File is empty. Goodbye\n");
         exit(3);
     }
-    printf("Buffer is %s\n", buffer);
+    buffer[ strlen(buffer) - 1] = '\0'; //Making as a proper string
+    printf("Buffer is '%s'\n", buffer);
     printf("Buffer size is %ld\n", strlen(buffer) );
 
     // READING IS COMPLETED. CLOSING THE FILE

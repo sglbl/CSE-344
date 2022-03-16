@@ -5,4 +5,6 @@ sLr1
 sstr5
 str5
 stl5
+str7
+str7x
 end

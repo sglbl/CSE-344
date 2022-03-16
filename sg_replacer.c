@@ -55,14 +55,16 @@ void replacer(char* buffer, char** operations, int size){
         strcpy(tempOperation, operations[i]);                                 
         ReplaceMode mode = NORMAL;
 
-        printf("tempOp is %s\n", tempOperation );
+        printf("Operation is %s\n", operations[i] );
         // Parsing operations[i] to get the first argument of operation
         char *str1 = strtok(tempOperation, "/");
         // Parsing operations[i] again to get the second argument of operation
         char *str2 = strtok(NULL, "/");
         // Check if argumant contains 'i', if contains it's insensitive
-        if( strtok(NULL, "/") != NULL ) 
+        if( strtok(NULL, "/") != NULL ){
             isInsensitive = TRUE;
+            mode = INSENSITIVE;
+        }
         
         if(str1[0] == '^'){        // if first argumant after / has ^ then it means it should support matching at line starts
             if(isInsensitive == TRUE)
@@ -75,10 +77,12 @@ void replacer(char* buffer, char** operations, int size){
             if(mode == LINE_START)
                 mode = LINE_START_AND_LINE_END;
             else if(mode == INSENSITIVE_AND_LINE_START)
-                mode = INSENSITIVE__LINE_START_AND_LINE_AND;
+                mode = INSENSITIVE_LINE_START_AND_LINE_AND;
             else
                 mode = LINE_END;
+            str1[ strlen(str1) - 1 ] = '\0'; // Truncate argument by 1 [Removing $ sign from the end]
         }
+        //if( strchr(str1, '*') != NULL )
 
         // If operation contains [ and ] characters than it supports multiple 
         if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
@@ -125,7 +129,13 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
             }
         }
         else if(mode == LINE_END){
-            // ...
+            // printf("Bufff is %c\n",  (buffer + strlen(str1) + i)[0] ); çç
+            // printf("BufINT is %d\n", (buffer + strlen(str1) + i)[0] );
+            if( ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
+                && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+            }
         }
 
         if(str1Info.index  != -1){
@@ -147,16 +157,12 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
     char* string;
     int leftSqIndex, rightSqIndex;
     
-    if( operation[strlen(operation) - 1] == 'i' ){
-        if(mode == LINE_START)
-            mode = INSENSITIVE_AND_LINE_START;
-        else
-            mode = INSENSITIVE;
-    }
-
     char* arg1 = strtok(operation, "/");
     int size = strlen(arg1);
     char *str2 = strtok(NULL, "/");
+
+    if(mode == LINE_START || mode == LINE_START_AND_LINE_END || mode == INSENSITIVE_AND_LINE_START || mode == INSENSITIVE_LINE_START_AND_LINE_AND)
+        arg1++; // If it is a line start operation (^), then we need to increment it to shift right
 
     // Finding how many MULTIPLE operations are there.
     for(leftSqIndex=0; arg1[leftSqIndex] != '['; ++leftSqIndex); 
@@ -164,9 +170,9 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
 
     for(int i = 1; i < (rightSqIndex - leftSqIndex); i++){
         string = (char*)calloc(size, sizeof(char));         // For example if first argument is S[TL]R1 
-        strncat(string, operation, leftSqIndex);            // Adding S to string  
-        strncat(string, operation + leftSqIndex + i, 1);    // Adding T and L to string in different cycles of loop
-        strncat(string, operation + rightSqIndex + 1, size - (rightSqIndex+1) ); // Adding R1 (adding rest of it to string).
+        strncat(string, arg1, leftSqIndex);            // Adding S to string  
+        strncat(string, arg1 + leftSqIndex + i, 1);    // Adding T and L to string in different cycles of loop
+        strncat(string, arg1 + rightSqIndex + 1, size - (rightSqIndex+1) ); // Adding R1 (adding rest of it to string).
         replace(buffer, string, str2, mode);
     }
 
