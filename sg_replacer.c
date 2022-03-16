@@ -155,6 +155,17 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
             }
         }
         else if( (mode & REPETITION /* 00001 */ ) == 1 /* Binary: 00001 */ ) { //If mode contains REPETITION (00001) then when we AND with 00001 it should give us 1.
+            if(strchr(str1, '[') != NULL && strchr(str1, ']') != NULL){
+                int flag = TRUE;
+                for(int leftSqIndex=0; str1[leftSqIndex] != '['; ++leftSqIndex){
+                    if( str1[leftSqIndex] != (buffer+i)[leftSqIndex] )
+                        flag = FALSE;
+                }
+                if(flag == TRUE)
+                    repetitionReplacerWithBracket(buffer, i, str1, str2, mode);
+                continue;
+            }
+
             char* strAfterKeyValue = strchr(str1, '*');     // FOR EXAMPLE if str1 argument is "st*r9" ; strAfterKeyValue is "*r9"
             char keyValue = (strAfterKeyValue-1)[0];        // Key value is in 1 backward than '*' so it's 't'
             char* strBeforeKeyValue = (char*)calloc(strlen(str1) - strlen(strAfterKeyValue) - 1 , sizeof(char) );
@@ -180,6 +191,26 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
     }
 
     printf("New buffer is '%s'\n", buffer);
+}
+
+void repetitionReplacerWithBracket(char *buffer, int i, char *str1, char *str2, ReplaceMode mode){
+    int leftSqIndex, rightSqIndex;
+    
+    for(leftSqIndex=0; str1[leftSqIndex] != '['; ++leftSqIndex); 
+    for(rightSqIndex=leftSqIndex; str1[rightSqIndex] != ']'; ++rightSqIndex); 
+    printf("Left sq index is %d and rightSqIndex is %d\n", leftSqIndex, rightSqIndex);
+
+    char* strAfterKeyValue = strchr(str1, '*');     // FOR EXAMPLE if str1 argument is "st*r9" ; strAfterKeyValue is "*r9"
+    char* strBeforeKeyValue = (char*)calloc(leftSqIndex , sizeof(char) );
+    strncpy(strBeforeKeyValue, str1, leftSqIndex); // When we substitute we find strBeforeKeyValue size. 
+    strAfterKeyValue++;                             // Moving cursor 1 right to remove * sign from after key value. Now strAfterKeyValue is "r9"
+    printf("strBeforeKeyValue is %s\n", strBeforeKeyValue);
+    printf("strAfterKeyValue is %s\n", strAfterKeyValue);
+
+    for(int j = leftSqIndex + 1; j < rightSqIndex; j++){
+        repetitionReplacer(buffer, i, strBeforeKeyValue, str1[j], strAfterKeyValue, str2, mode);
+    }
+
 }
 
 void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyValue, char *strAfterKeyValue, char *str2, ReplaceMode mode){

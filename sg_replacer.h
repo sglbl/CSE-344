@@ -38,4 +38,7 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode);
 /* When program sees * character in argument then calls this function in order to replace argument with repetition */
 void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyValue, char *strAfterKeyValue, char *str2, ReplaceMode mode);
 
+/* When program sees *  and [ ] characters in argument then calls this function in order to replace argument with repetition */
+void repetitionReplacerWithBracket(char *buffer, int i, char *str1, char *str2, ReplaceMode mode);
+
 #endif
