@@ -75,18 +75,8 @@ void replacer(char* buffer, char** operations, int size){
             str1[ strlen(str1) - 1 ] = '\0'; // Truncate argument by 1 [Removing $ sign from the end]
         }
         
-        char keyValue;
-        char* afterAsterisk;
-        if( (afterAsterisk = strchr(str1, '*')) != NULL ){  // If argument is "st*r7"
+        if( strchr(str1, '*') != NULL ){  // If argument is "st*r9"
             mode |= REPETITION;
-            printf("After asteriks is %s\n", afterAsterisk);
-            keyValue = (afterAsterisk-1)[0];
-            printf("Key value is %c", keyValue);
-            //for(int j=0; str1[j] != keyValue; j++);
-            printf("SIZE is %ld", strlen(str1) - strlen(afterAsterisk) - 1);
-
-            printf("--After asteriks is %s\n", --afterAsterisk);
-            printf("Str1 is %s\n", str1);
         }
 
         // If operation contains [ and ] characters than it supports multiple 
@@ -164,20 +154,27 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 str1Info.size = strlen(str1);
             }
         }
-        else if( (mode & REPETITION /* 00001 */ ) == 1 /* Binary: 00001 */ ) { //If mode contains REPETITION then it's 1 when we AND.
-            printf("REPETITION MODE ON\n");
-            repetitionReplacer(buffer, i, str1, str2, mode );
+        else if( (mode & REPETITION /* 00001 */ ) == 1 /* Binary: 00001 */ ) { //If mode contains REPETITION (00001) then when we AND with 00001 it should give us 1.
+            char* strAfterKeyValue = strchr(str1, '*');     // FOR EXAMPLE if str1 argument is "st*r9" ; strAfterKeyValue is "*r9"
+            char keyValue = (strAfterKeyValue-1)[0];        // Key value is in 1 backward than '*' so it's 't'
+            char* strBeforeKeyValue = (char*)calloc(strlen(str1) - strlen(strAfterKeyValue) - 1 , sizeof(char) );
+            strncpy(strBeforeKeyValue, str1, strlen(str1) - strlen(strAfterKeyValue) - 1); // When we substitute we find strBeforeKeyValue size. 
+            strAfterKeyValue++;                             // Moving cursor 1 right to remove * sign from after key value. Now strAfterKeyValue is "r9"
+            
+            if( strncmp(buffer+i, strBeforeKeyValue, strlen(strBeforeKeyValue) ) == 0 ){ //If string before key value matches enter repetitionReplacer() to check more.
+                repetitionReplacer(buffer, i, strBeforeKeyValue, keyValue, strAfterKeyValue, str2, mode );
+            }
             continue;
         }
 
-        if(str1Info.index  != -1){
+        if(str1Info.index != -1){
             for(int j=0; j < str1Info.size; j++)
                 buffer[str1Info.index + j] = str2[j]; //Changing info in buffer
         }
         
     }
 
-    if(str1Info.index  == -1){
+    if(str1Info.index  == -1 && (mode & REPETITION /* 00001 */ ) != 1 ){
         printf("WARNING! %s couldn't be found on file.\n", str1);
         return;
     }
@@ -185,10 +182,64 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
     printf("New buffer is '%s'\n", buffer);
 }
 
-void repetitionReplacer(char *buffer, int i, char *str1, char *str2, ReplaceMode mode){
+void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyValue, char *strAfterKeyValue, char *str2, ReplaceMode mode){
+    int repetitionCounter = 0;  // Counting how many repetition are there
+    char* str1; // String that will be replaced
+    int size = strlen(strBeforeKeyValue) + strlen(strAfterKeyValue); // Size of string if has 0 repetition
+
+    // FOR EXAMPLE : ARGUMENT IS "st*r9"
+    // FIRST CONDITION : 0 repetition. Checking "sr9"
+    char* concatWith0Repetition = (char*)calloc(size, sizeof(char));
+    strcpy(concatWith0Repetition, strBeforeKeyValue);
+    strcat(concatWith0Repetition, strAfterKeyValue);
+    if( strncmp(buffer + i, concatWith0Repetition, size) == 0){
+        printf("Repetition validated.\n");
+        str1 = concatWith0Repetition;
+    }
+    // SECOND CONDITION : 1 or more repetition
+    else{
+        for(int j = 0; j < size; j++){
+            if( (buffer + i + strlen(strBeforeKeyValue) )[j] == keyValue ){  // Check how many times does it repeat
+                repetitionCounter++;
+            }
+            else
+                break;
+        }
+        if(repetitionCounter == 0) // If 0 times repeating than string not found; because if it was zero we would have already found above.
+            return; // String couldn't be found.
+        printf("RepetCounter is %d\n", repetitionCounter);
+        if( strncmp(buffer + i + strlen(strBeforeKeyValue) + repetitionCounter , strAfterKeyValue, strlen(strAfterKeyValue) ) == 0 ){
+            // String found.  For "st*r9" --> "s" + "t (repetitionCounter Times)" + "r9"
+            for(int j = 0; j < repetitionCounter; j++)
+                strncat(strBeforeKeyValue, &keyValue, 1);  // Concatanate keyValue "repetitionCounter" times.
+            strcat(strBeforeKeyValue, strAfterKeyValue);
+            str1 = strBeforeKeyValue;
+        }
+        else
+            return; // String couldn't be found.
+    }
+
+    // Now it's time to replace str1 value with str2 in file.
+    size += repetitionCounter;  // This is size of str1 that will be replaced by other string str2.
+    int difference = strlen(str2) - size;
+    printf("Difference is %d\n", difference);
+
+    printf("Str1 is %s\n", str1);
+    printf("Str2 is %s\n", str2);
     
 
 
+    char* tempString = (char*)calloc( strlen(buffer) + difference , sizeof(char) );
+    strncpy( tempString, buffer, i );
+    strncat( tempString, str2, strlen(str2) );   // Adding new string to replace to tempString
+    strcat( tempString, buffer + i + strlen(str1) ); // Moving cursor(iter) 2 left to show the after appended string.
+
+
+    for(int j=0; j < strlen(tempString); j++)
+        buffer[j] = tempString[j];
+    buffer[strlen(tempString)] = '\0';
+    free(tempString);
+    printf("NewBuffer2 is '%s'\n", buffer);
 
 }
 

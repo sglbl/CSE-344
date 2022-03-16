@@ -1,3 +1,5 @@
-sr5
-str5
-sttr5
+str10
+str10
+slr9
+str10
+sstr10

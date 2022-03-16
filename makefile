@@ -5,7 +5,7 @@ compile:main.c sg_replacer.c sg_replacer.h
 # Example usage while executing
 # make
 # ./hw1 '/s[tl]r1/str2/i;/sTR3/str4/i;/^st[lr]5/str6/;/str7$/str8/' files/ex1.txt
-# ./hw1 '/st*r5/str6/' files/ex2.txt
+# ./hw1 '/st*r9/str10/' files/ex2.txt
 
 run:		
 	gcc main.c sg_replacer.c -Wall -o hw1
