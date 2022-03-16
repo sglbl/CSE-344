@@ -80,7 +80,7 @@ void replacer(char* buffer, char** operations, int size){
         }
 
         // If operation contains [ and ] characters than it supports multiple 
-        if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
+        if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL && ((mode & REPETITION) == 0) ){
             multipleReplacer(buffer, ++operations[i], mode);  // Changing cursor 1 to the right so get rid of '/' symbol
             continue;
         }
@@ -187,12 +187,17 @@ void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyVa
     char* str1; // String that will be replaced
     int size = strlen(strBeforeKeyValue) + strlen(strAfterKeyValue); // Size of string if has 0 repetition
 
-    // FOR EXAMPLE : ARGUMENT IS "st*r9"
-    // FIRST CONDITION : 0 repetition. Checking "sr9"
     char* concatWith0Repetition = (char*)calloc(size, sizeof(char));
     strcpy(concatWith0Repetition, strBeforeKeyValue);
     strcat(concatWith0Repetition, strAfterKeyValue);
-    if( strncmp(buffer + i, concatWith0Repetition, size) == 0){
+
+    // FOR EXAMPLE : ARGUMENT IS "st*r9"
+    // FIRST CONDITION : 0 repetition. Checking "sr9"
+    if( (mode & SENSITIVE) != 0 && strncmp(buffer + i, concatWith0Repetition, size) == 0){ //If sensitive and string matches
+        printf("Repetition validated.\n");
+        str1 = concatWith0Repetition;
+    }
+    else if( (mode & INSENSITIVE) != 0 && strncasecmp(buffer + i, concatWith0Repetition, size) == 0){ //If not sensitive and string matches
         printf("Repetition validated.\n");
         str1 = concatWith0Repetition;
     }
@@ -208,15 +213,29 @@ void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyVa
         if(repetitionCounter == 0) // If 0 times repeating than string not found; because if it was zero we would have already found above.
             return; // String couldn't be found.
         printf("RepetCounter is %d\n", repetitionCounter);
-        if( strncmp(buffer + i + strlen(strBeforeKeyValue) + repetitionCounter , strAfterKeyValue, strlen(strAfterKeyValue) ) == 0 ){
-            // String found.  For "st*r9" --> "s" + "t (repetitionCounter Times)" + "r9"
-            for(int j = 0; j < repetitionCounter; j++)
-                strncat(strBeforeKeyValue, &keyValue, 1);  // Concatanate keyValue "repetitionCounter" times.
-            strcat(strBeforeKeyValue, strAfterKeyValue);
-            str1 = strBeforeKeyValue;
+
+        if( (mode & SENSITIVE) != 0 ){
+            if( strncmp(buffer + i + strlen(strBeforeKeyValue) + repetitionCounter , strAfterKeyValue, strlen(strAfterKeyValue) ) == 0 ){
+                // String found.  For "st*r9" --> "s" + "t (repetitionCounter Times)" + "r9"
+                for(int j = 0; j < repetitionCounter; j++)
+                    strncat(strBeforeKeyValue, &keyValue, 1);  // Concatanate keyValue "repetitionCounter" times.
+                strcat(strBeforeKeyValue, strAfterKeyValue);
+                str1 = strBeforeKeyValue;
+            }
+            else
+                return; // String couldn't be found.
         }
-        else
-            return; // String couldn't be found.
+        else if( (mode & INSENSITIVE) != 0 ){
+            if( strncasecmp(buffer + i + strlen(strBeforeKeyValue) + repetitionCounter , strAfterKeyValue, strlen(strAfterKeyValue) ) == 0 ){
+                // String found.  For "st*r9" --> "s" + "t (repetitionCounter Times)" + "r9"
+                for(int j = 0; j < repetitionCounter; j++)
+                    strncat(strBeforeKeyValue, &keyValue, 1);  // Concatanate keyValue "repetitionCounter" times.
+                strcat(strBeforeKeyValue, strAfterKeyValue);
+                str1 = strBeforeKeyValue;
+            }
+            else
+                return; // String couldn't be found.
+        }
     }
 
     // Now it's time to replace str1 value with str2 in file.
@@ -227,13 +246,20 @@ void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyVa
     printf("Str1 is %s\n", str1);
     printf("Str2 is %s\n", str2);
     
-
+    if( (mode & LINE_START) != 0 ){ //then it means it contains ^
+        if( i != 0 && (buffer+i-1)[0] != '\n'){ //Checking if starting of a line or the beginning of file.
+            return;
+        }
+    }
+    if( (mode & LINE_END) != 0 ){ //then it means it contains $
+        if( ((buffer + strlen(str1) + i)[0] != '\n') && ((buffer + strlen(str1) + i)[0] != '\0') ) // If next char is '\n' or EOF then it supports $
+            return;
+    }
 
     char* tempString = (char*)calloc( strlen(buffer) + difference , sizeof(char) );
     strncpy( tempString, buffer, i );
     strncat( tempString, str2, strlen(str2) );   // Adding new string to replace to tempString
     strcat( tempString, buffer + i + strlen(str1) ); // Moving cursor(iter) 2 left to show the after appended string.
-
 
     for(int j=0; j < strlen(tempString); j++)
         buffer[j] = tempString[j];
