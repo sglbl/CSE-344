@@ -38,22 +38,22 @@ char** argDivider(char* arg, int *counter){
 
     char** operations = (char**)calloc(numberOfOperations, sizeof(char));
     char *token = strtok(arg, ";");
-    for(i = 0; token != NULL; i++){
+    for(i = 0; token != NULL && i < numberOfOperations; i++){
+        operations[i] = (char*)calloc(20, sizeof(char));
         operations[i] = token;
         token = strtok(NULL, ";");
     }
     *counter = i;
-
+    
     return operations;
 }
 
 void replacer(char* buffer, char** operations, int size){
     // For every operation (that's divided by / symbols on argument )
     for(int i=0; i<size; i++){    
-        int isInsensitive;
         char* tempOperation = (char*)calloc(strlen(operations[i]), sizeof(char));
         strcpy(tempOperation, operations[i]);                                 
-        ReplaceMode mode = NORMAL;
+        ReplaceMode mode = SENSITIVE;
 
         printf("Operation is %s\n", operations[i] );
         // Parsing operations[i] to get the first argument of operation
@@ -62,30 +62,40 @@ void replacer(char* buffer, char** operations, int size){
         char *str2 = strtok(NULL, "/");
         // Check if argumant contains 'i', if contains it's insensitive
         if( strtok(NULL, "/") != NULL ){
-            isInsensitive = TRUE;
             mode = INSENSITIVE;
         }
         
+        // This function uses bitwise | operator in order to select replace mode in an easier way.
         if(str1[0] == '^'){        // if first argumant after / has ^ then it means it should support matching at line starts
-            if(isInsensitive == TRUE)
-                mode = INSENSITIVE_AND_LINE_START;
-            else
-                mode = LINE_START;
+            mode |= LINE_START;
+            printf("LINE MODE IS %d\n", mode);
             str1++; //Moving string one char right so get rid of ^
         }
         if(str1[strlen(str1) - 1] == '$'){  // if first argumant has $ then it means it should support matching at line ends
-            if(mode == LINE_START)
-                mode = LINE_START_AND_LINE_END;
-            else if(mode == INSENSITIVE_AND_LINE_START)
-                mode = INSENSITIVE_LINE_START_AND_LINE_AND;
-            else
-                mode = LINE_END;
+            printf("line end supporTTTT\n");
+            printf("Mode1 is %d\n", mode);
+            mode |= LINE_END;
+            printf("Mode2 is %d\n", mode);
             str1[ strlen(str1) - 1 ] = '\0'; // Truncate argument by 1 [Removing $ sign from the end]
         }
-        //if( strchr(str1, '*') != NULL )
+        
+        char keyValue;
+        char* afterAsterisk;
+        if( (afterAsterisk = strchr(str1, '*')) != NULL ){  // If argument is "st*r7"
+            mode |= REPETITION;
+            printf("After asteriks is %s\n", afterAsterisk);
+            keyValue = (afterAsterisk-1)[0];
+            printf("Key value is %c", keyValue);
+            //for(int j=0; str1[j] != keyValue; j++);
+            printf("SIZE is %ld", strlen(str1) - strlen(afterAsterisk) - 1);
+
+            printf("--After asteriks is %s\n", --afterAsterisk);
+            printf("Str1 is %s\n", str1);
+        }
 
         // If operation contains [ and ] characters than it supports multiple 
         if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL){
+            printf("xx");
             multipleReplacer(buffer, ++operations[i], mode);  // Changing cursor 1 to the right so get rid of '/' symbol
             continue;
         }
@@ -103,40 +113,72 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
 
     // Getting index of str1 (argument 1) to replace
     for(int i=0; i<bufferSize; i++){
-        if(mode == NORMAL){
+        if( mode == SENSITIVE ){
             if( strncmp(buffer+i, str1, strlen(str1) ) == 0){
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
         }
-        else if(mode == INSENSITIVE){
+        else if( mode == INSENSITIVE ){
             if( strncasecmp(buffer+i, str1, strlen(str1) ) == 0){
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
         }
-        else if(mode == LINE_START){
+        else if( mode == (SENSITIVE | LINE_START) ){
             if( (buffer+i-1)[0] == '\n' && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                printf("LINEEE");
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
         }
-        else if(mode == INSENSITIVE_AND_LINE_START){
+        else if( mode == (INSENSITIVE | LINE_START) ){
             if( ( (buffer+i-1)[0] == '\n' || i == 0)  // If it's first line; then it means that it's first line of file or the previous char is '\n'
                 && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
         }
-        else if(mode == LINE_END){
-            // printf("Bufff is %c\n",  (buffer + strlen(str1) + i)[0] ); çç
-            // printf("BufINT is %d\n", (buffer + strlen(str1) + i)[0] );
+        else if( mode == (SENSITIVE | LINE_END) ){
             if( ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
                 && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
             }
         }
+        else if( mode == (INSENSITIVE | LINE_END) ){
+            if( ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
+                && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+            }
+        }
+
+        else if( mode == (SENSITIVE | LINE_START | LINE_END) ){
+            if( ( (buffer+i-1)[0] == '\n' || i == 0) // If it's first line; then it means that it's first line of file or the previous char is '\n' 
+                && ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
+                && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+            }
+        }
+        else if( mode == (INSENSITIVE | LINE_START | LINE_END) ){
+            if( ( (buffer+i-1)[0] == '\n' || i == 0) // If it's first line; then it means that it's first line of file or the previous char is '\n' 
+                && ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
+                && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+            }
+        }
+        else if( mode == (SENSITIVE | REPETITION) ){
+            printf("REPETITION MODE ON");
+            if( ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
+                && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
+                str1Info.index = i;
+                str1Info.size = strlen(str1);
+            }
+        }
+        
 
         if(str1Info.index  != -1){
             for(int j=0; j < str1Info.size; j++)
@@ -161,7 +203,7 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
     int size = strlen(arg1);
     char *str2 = strtok(NULL, "/");
 
-    if(mode == LINE_START || mode == LINE_START_AND_LINE_END || mode == INSENSITIVE_AND_LINE_START || mode == INSENSITIVE_LINE_START_AND_LINE_AND)
+    if(mode == (SENSITIVE | LINE_START) || mode == (SENSITIVE | LINE_START | LINE_END) || mode == (INSENSITIVE | LINE_START) || mode == (INSENSITIVE | LINE_START | LINE_END) )
         arg1++; // If it is a line start operation (^), then we need to increment it to shift right
 
     // Finding how many MULTIPLE operations are there.

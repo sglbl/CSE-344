@@ -2,6 +2,9 @@ target: compile
 
 compile:main.c sg_replacer.c sg_replacer.h
 	gcc main.c sg_replacer.c -Wall -o hw1
+# Example usage when executing
+# make
+# ./hw1 '/s[tl]r1/str2/i;/sTR3/str4/i;/^st[lr]5/str6/;/str7$/str8/' files/ex3.txt
 
 run:		
 	gcc main.c sg_replacer.c -Wall -o hw1

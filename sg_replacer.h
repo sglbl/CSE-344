@@ -11,19 +11,16 @@ typedef struct StrInfo{
     int size;
 }StrInfo;
 
-typedef enum ReplaceMode{   
-    NORMAL,
-    INSENSITIVE,
-    LINE_START,
-    LINE_START_AND_LINE_END,
-    INSENSITIVE_AND_LINE_START,
-    INSENSITIVE_AND_LINE_END,
-    INSENSITIVE_LINE_START_AND_LINE_AND,
-    LINE_END,
-    REPETITION,
-} ReplaceMode;
+typedef enum ReplaceMode{ 
+    SENSITIVE = 16,  /* Binary: 10000 */
+    INSENSITIVE = 8, /* Binary: 01000 */
+    LINE_START = 4, /* Binary: 00100 */
+    LINE_END = 2, /* Binary: 00010 */
+    REPETITION = 1, /* Binary: 00001 */
+} ReplaceMode; /* Replace mode is in binary mode actually because it will be used with bitwise | operations to check which conditions satisfy. */
+//çç add to report about thinking more enum modes.
 
-/* Prints error and instruction about how to run app */
+//* Prints error and instruction about how to run app */
 void printErrorAndExit();
 
 /* Dividing argv[1] into different operations as 2D array / double pointer */
