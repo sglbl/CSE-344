@@ -11,42 +11,38 @@ int main(int argc, char *argv[]){
 
     struct stat statOfFile;  //Adress of statOfFile will be sent to stat() function in order to get size information of file.
     int readedBytes;            // Number of readed bytes
-    int fdRead, fdWrite;        // Directory stream file descriptors for reading and writing
+    int fileDesc;        // Directory stream file descriptors for reading and writing
+    struct flock lock;
     char *filePath = argv[2];   // Path of file that is given on the last command line argument
 
     if(stat(argv[2], &statOfFile) < 0){
         perror("Error while opening the file.\n");
         exit(EXIT_FAILURE);
     }
-    // printf("File Size: \t\t%ld bytes\n", statOfFile.st_size);
 
     char *buffer = (char*)calloc( statOfFile.st_size , sizeof(char));   // Buffer that data will be stored
     if(argc != 3)
-        printErrorAndExit();
+        printErrorAndExit();    
     
     // OPENING FILE ON READ ONLY MODE
-    if( (fdRead = open(filePath, O_RDONLY, S_IWGRP)) == -1 ){
+    if( (fileDesc = open(filePath, O_RDWR , S_IWGRP)) == -1 ){
         perror("Error while opening the file to read.\n");
         exit(2);
     }
 
+    // // LOCKING
+    // memset(&lock, 0, sizeof(lock) );  // Init the lock system
+    // lock.l_type = F_WRLCK; // F_WRLCK: field of the structure for a write lock.
+    // if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) { // Putting write lock on the file. F_SETLKW: If a signal is caught while waiting, then the call is interrupted and (after signal handler returned) returns immediately
+    //     perror("Error while locking with fcntl(F_SETLK)");
+    //     exit(EXIT_FAILURE);
+    // }
+
     // READING FILE AND SAVING CONTENT TO BUFFER
-    while( (readedBytes = read(fdRead, buffer, statOfFile.st_size)) == -1 && errno == EINTR ){ /* Intentionanlly Empty loop to deal interruptions by signal */}
+    while( (readedBytes = read(fileDesc, buffer, statOfFile.st_size)) == -1 && errno == EINTR ){ /* Intentionanlly Empty loop to deal interruptions by signal */}
     if(readedBytes <= 0){
         perror("File is empty. Goodbye\n");
         exit(3);
-    }
-
-    // READING IS COMPLETED. CLOSING THE FILE
-    if( close(fdRead) == -1 ){   
-        perror("Error while closing the file.");
-        exit(4);
-    }
-
-    // OPENING THE FILE AGAIN [THIS TIME IN WRITE MODE]  [I didn't use RDWR to open and close at the same time because it appends to the end instead of writing from scratch]
-    if( (fdWrite = open(filePath, O_WRONLY | O_TRUNC, S_IWGRP)) == -1 ){  // O_TRUNC helps us to truncate [writting like from stratch]
-        perror("Error while opening the file to write.\n");
-        exit(5);
     }
 
     // PARSING OPERATIONS FROM COMMAND LINE ARGUMENT TO AN ARRAY
@@ -58,15 +54,31 @@ int main(int argc, char *argv[]){
     replacer(buffer, operations, size);
     // IF OPERATIONS FOUND ON FILE, BUFFER IS CHANGED
 
-    printf("New Buffer to be written is \n'%s'\n", buffer);
+    write(1 /* fd for stdout */, "New Buffer to be written is '", 30); 
+    write(1 /* fd for stdout */, buffer, strlen(buffer) );
+    write(1 /* fd for stdout */, "'\n", 3);
+
+    // SETTING CURSOR TO THE BEGINNING OF FILE WITH LSEEK
+    lseek(fileDesc, 0, SEEK_SET); 
+    // TRUNCATING OLD INFO IN FILE DESCRIPTOR'S BUFFER SO WE CAN OVERWRITE AGAIN IN THE SAME FILE.
+    ftruncate(fileDesc, strlen(buffer) ); 
+
     // WRITING THE NEW BUFFER INTO THE SAME INPUT FILE
-    while( write(fdWrite, buffer, strlen(buffer) ) == -1 && errno == EINTR ){/* Intentionanlly Empty loop to deal interruptions by signal */}
-    printf("Succesfully writed to the file\n");
+    while( write(fileDesc, buffer, strlen(buffer) ) == -1 && errno == EINTR ){/* Intentionanlly Empty loop to deal interruptions by signal */}
+    write(1 /* fd for stdout */, "Succesfully writed to the file\n", 32);
 
     // WRITING IS COMPLETED. CLOSING THE FILE.
-    if( close(fdWrite) == -1 ){   
+    if( close(fileDesc) == -1 ){   
         perror("Error while closing the file.");
         exit(6);
     }
+
+    // // UNLOCKING 
+    // lock.l_type = F_UNLCK;
+    // if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) {
+    //     perror("Error while unlocking with fcntl(F_SETLK)");
+    //     exit(EXIT_FAILURE);
+    // }
+
     return 0;
 }

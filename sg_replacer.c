@@ -334,7 +334,6 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
         strncat(string, arg1, leftSqIndex);            // Adding S to string  
         strncat(string, arg1 + leftSqIndex + i, 1);    // Adding T and L to string in different cycles of loop
         strncat(string, arg1 + rightSqIndex + 1, size - (rightSqIndex+1) ); // Adding R1 (adding rest of it to string).
-        printf("String is %s\n", string);
         replace(buffer, string, str2, mode);
     }
 
