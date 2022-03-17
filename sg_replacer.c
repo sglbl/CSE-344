@@ -1,14 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <unistd.h>
+#include <errno.h> // spesific error message
+#include <fcntl.h> // provide control over open files
+#include <unistd.h> // unix standard functions
 #include "sg_replacer.h"
 #define TRUE 1
 #define FALSE 0
-#define STR_SIZE 80
 
 void printErrorAndExit(){
     perror( "ERROR FOUND ON ARGUMENTS; PLEASE ENTER A VALID INPUT! INSTRUCTIONS:\n"
@@ -20,7 +18,7 @@ void printErrorAndExit(){
     "./hw1 '/str1$/str2/' inputFilePath -> Support matching at line ends like this will only match lines ending with str1 \n"
     "./hw1 '/st*r1/str2/' inputFilePath -> Support 0 or more repetitions of characters like this will match sr1, str1, sttr1 \n"
     "./hw1 '/^Window[sz]*/Linux/i;/close[dD]$/open/' inputFilePath -> it supports arbitrary combinations of the above \n");
-    printf("Goodbye!\n");
+    write(1 /* File descriptor for stdout */, "Goodbye!\n", 10);
     exit(EXIT_FAILURE);
 }
 
@@ -37,7 +35,7 @@ char** argDivider(char* arg, int *counter){
             numberOfOperations++;  
     }
 
-    char** operations = (char**)calloc(numberOfOperations, sizeof(char));
+    char** operations = (char**)calloc(numberOfOperations, sizeof(char*));
     char *token = strtok(arg, ";");
     for(i = 0; token != NULL && i < numberOfOperations; i++){
         operations[i] = (char*)calloc(30, sizeof(char));
@@ -53,10 +51,9 @@ void replacer(char* buffer, char** operations, int size){
     // For every operation (that's divided by / symbols on argument )
     for(int i=0; i<size; i++){    
         char* tempOperation = (char*)calloc(strlen(operations[i]), sizeof(char));
-        strcpy(tempOperation, operations[i]);                                 
+        strncpy(tempOperation, operations[i], strlen(operations[i]));                                 
         ReplaceMode mode = SENSITIVE;
 
-        printf("Operation is %s\n", operations[i] );
         // Parsing operations[i] to get the first argument of operation
         char *str1 = strtok(tempOperation, "/");
         // Parsing operations[i] again to get the second argument of operation
@@ -86,7 +83,6 @@ void replacer(char* buffer, char** operations, int size){
             continue;
         }
 
-        // printf("STR1-> %s | STR2-> %s | MODE-> %d \n", str1, str2, mode);
         replace(buffer, str1, str2, mode);                         // Replacing
     }
 
@@ -102,24 +98,24 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
     for(int i=0; i<bufferSize; i++){
         str1Info.index = -1;
         if( mode == SENSITIVE ){
-            return;
             if( strncmp(buffer+i, str1, strlen(str1) ) == 0){
-                printf("yes");
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
-                return;
+                foundFlag = TRUE;
             }
         }
         else if( mode == INSENSITIVE ){
             if( strncasecmp(buffer+i, str1, strlen(str1) ) == 0){
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
+                foundFlag = TRUE;
             }
         }
         else if( mode == (SENSITIVE | LINE_START) ){
             if( (buffer+i-1)[0] == '\n' && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
+                foundFlag = TRUE;
             }
         }
         else if( mode == (INSENSITIVE | LINE_START) ){
@@ -127,6 +123,7 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
+                foundFlag = TRUE;
             }
         }
         else if( mode == (SENSITIVE | LINE_END) ){
@@ -134,13 +131,15 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
+                foundFlag = TRUE;
             }
         }
         else if( mode == (INSENSITIVE | LINE_END) ){
-            if( ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') ) // If next char is '\n' or EOF then it supports $
+            if( ( ((buffer + strlen(str1) + i)[0] == '\n') || ((buffer + strlen(str1) + i)[0] == '\0') || ((buffer + strlen(str1) + i)[0] == '\r')  ) // If next char is '\n' or '\r' or EOF then it supports $
                 && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
+                foundFlag = TRUE;
             }
         }
 
@@ -150,6 +149,7 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 && strncmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
+                foundFlag = TRUE;
             }
         }
         else if( mode == (INSENSITIVE | LINE_START | LINE_END) ){
@@ -158,6 +158,7 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 && strncasecmp(buffer+i, str1, strlen(str1) ) == 0){ //Checking if starting of a line
                 str1Info.index = i;
                 str1Info.size = strlen(str1);
+                foundFlag = TRUE;
             }
         }
         else if( (mode & REPETITION /* 00001 */ ) == 1 /* Binary: 00001 */ ) { //If mode contains REPETITION (00001) then when we AND with 00001 it should give us 1.
@@ -201,7 +202,7 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
     }
 
     if(foundFlag == FALSE && (mode & REPETITION /* 00001 */ ) != 1 ){
-        printf("WARNING! %s couldn't be found on file.\n", str1);
+        write(2 /* file descriptor of stderr */ , "WARNING! One or more arguments you want to replace couldn't be found on file.\n", 79);
         return;
     }
 }
@@ -333,6 +334,7 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
         strncat(string, arg1, leftSqIndex);            // Adding S to string  
         strncat(string, arg1 + leftSqIndex + i, 1);    // Adding T and L to string in different cycles of loop
         strncat(string, arg1 + rightSqIndex + 1, size - (rightSqIndex+1) ); // Adding R1 (adding rest of it to string).
+        printf("String is %s\n", string);
         replace(buffer, string, str2, mode);
     }
 

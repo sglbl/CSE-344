@@ -18,7 +18,6 @@ typedef enum ReplaceMode{
     LINE_END = 2, /* Binary: 00010 */
     REPETITION = 1, /* Binary: 00001 */
 } ReplaceMode; /* Replace mode is in binary mode actually because it will be used with bitwise | operations to check which conditions satisfy. */
-//çç add to report about thinking more enum modes.
 
 //* Prints error and instruction about how to run app */
 void printErrorAndExit();

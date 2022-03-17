@@ -3,20 +3,26 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "sg_replacer.h"
 
-#define SIZE 4096 //çç
-
 int main(int argc, char *argv[]){
-    
-    char buffer[SIZE];          // Creating buffer to store data readed from file.
-    char* filePath = argv[2];   // Path of file that is given on the last command line argument
+
+    struct stat statOfFile;  //Adress of statOfFile will be sent to stat() function in order to get size information of file.
     int readedBytes;            // Number of readed bytes
     int fdRead, fdWrite;        // Directory stream file descriptors for reading and writing
+    char *filePath = argv[2];   // Path of file that is given on the last command line argument
+
+    if(stat(argv[2], &statOfFile) < 0){
+        perror("Error while opening the file.\n");
+        exit(EXIT_FAILURE);
+    }
+    // printf("File Size: \t\t%ld bytes\n", statOfFile.st_size);
+
+    char *buffer = (char*)calloc( statOfFile.st_size , sizeof(char));   // Buffer that data will be stored
     if(argc != 3)
         printErrorAndExit();
-
     
     // OPENING FILE ON READ ONLY MODE
     if( (fdRead = open(filePath, O_RDONLY, S_IWGRP)) == -1 ){
@@ -25,7 +31,7 @@ int main(int argc, char *argv[]){
     }
 
     // READING FILE AND SAVING CONTENT TO BUFFER
-    while( (readedBytes = read(fdRead, buffer, SIZE)) == -1 && errno == EINTR ){ /* Intentionanlly Empty loop to deal interruptions by signal */}
+    while( (readedBytes = read(fdRead, buffer, statOfFile.st_size)) == -1 && errno == EINTR ){ /* Intentionanlly Empty loop to deal interruptions by signal */}
     if(readedBytes <= 0){
         perror("File is empty. Goodbye\n");
         exit(3);

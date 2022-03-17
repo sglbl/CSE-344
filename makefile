@@ -18,7 +18,10 @@ run:
 # make run args="'/s[tl]r1/str2/i;/sTR3/str4/i;/^st[lr]5/str6/' files/ex1.txt"
 
 debug:
-	gcc main.c sg_replacer.c -g -Wall -o hw1
+	gcc -g main.c sg_replacer.c -Wall -o hw1
+
+debug2:
+	gcc -fsanitize=address -g main.c sg_replacer.c -Wall -o hw1
 
 warnings:
 	gcc main.c library.c -lm -Wall -Wextra -o hw1
