@@ -15,7 +15,7 @@ int main(int argc, char *argv[]){
     struct flock lock;
     char *filePath = argv[2];   // Path of file that is given on the last command line argument
 
-    if(stat(argv[2], &statOfFile) < 0){
+    if(stat(filePath, &statOfFile) < 0){
         perror("Error while opening the file.\n");
         exit(EXIT_FAILURE);
     }
@@ -30,13 +30,13 @@ int main(int argc, char *argv[]){
         exit(2);
     }
 
-    // // LOCKING
-    // memset(&lock, 0, sizeof(lock) );  // Init the lock system
-    // lock.l_type = F_WRLCK; // F_WRLCK: field of the structure for a write lock.
-    // if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) { // Putting write lock on the file. F_SETLKW: If a signal is caught while waiting, then the call is interrupted and (after signal handler returned) returns immediately
-    //     perror("Error while locking with fcntl(F_SETLK)");
-    //     exit(EXIT_FAILURE);
-    // }
+    // LOCKING
+    memset(&lock, 0, sizeof(lock) );  // Init the lock system
+    lock.l_type = F_WRLCK; // F_WRLCK: field of the structure for a write lock.
+    if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) { // Putting write lock on the file. F_SETLKW: If a signal is caught while waiting, then the call is interrupted and (after signal handler returned) returns immediately
+        perror("Error while locking with fcntl(F_SETLK)");
+        exit(EXIT_FAILURE);
+    }
 
     // READING FILE AND SAVING CONTENT TO BUFFER
     while( (readedBytes = read(fileDesc, buffer, statOfFile.st_size)) == -1 && errno == EINTR ){ /* Intentionanlly Empty loop to deal interruptions by signal */}
@@ -47,6 +47,7 @@ int main(int argc, char *argv[]){
 
     // PARSING OPERATIONS FROM COMMAND LINE ARGUMENT TO AN ARRAY
     int size = 0; //Will be used with call by reference
+    //char* command = "/^Window[sz]*/Linux/i;/close[dD]$/open/";
     // char** operations = argDivider( command, &size );
     char** operations = argDivider( argv[1], &size );
 
@@ -67,18 +68,18 @@ int main(int argc, char *argv[]){
     while( write(fileDesc, buffer, strlen(buffer) ) == -1 && errno == EINTR ){/* Intentionanlly Empty loop to deal interruptions by signal */}
     write(1 /* fd for stdout */, "Succesfully writed to the file\n", 32);
 
+    // UNLOCKING 
+    lock.l_type = F_UNLCK;
+    if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) {
+        perror("Error while unlocking with fcntl(F_SETLK)");
+        exit(EXIT_FAILURE);
+    }
+
     // WRITING IS COMPLETED. CLOSING THE FILE.
     if( close(fileDesc) == -1 ){   
         perror("Error while closing the file.");
         exit(6);
     }
-
-    // // UNLOCKING 
-    // lock.l_type = F_UNLCK;
-    // if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) {
-    //     perror("Error while unlocking with fcntl(F_SETLK)");
-    //     exit(EXIT_FAILURE);
-    // }
 
     return 0;
 }

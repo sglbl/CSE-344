@@ -34,9 +34,11 @@ char** argDivider(char* arg, int *counter){
         if(arg[i] == ';') 
             numberOfOperations++;  
     }
+    char* tempArg = (char*)calloc( strlen(arg), sizeof(char) );
+    strncpy(tempArg, arg, strlen(arg));
 
     char** operations = (char**)calloc(numberOfOperations, sizeof(char*));
-    char *token = strtok(arg, ";");
+    char *token = strtok(tempArg, ";");
     for(i = 0; token != NULL && i < numberOfOperations; i++){
         operations[i] = (char*)calloc(30, sizeof(char));
         operations[i] = token;
@@ -299,7 +301,7 @@ void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyVa
             return;
     }
 
-    char* tempString = (char*)calloc( strlen(buffer) + difference , sizeof(char) );
+    char* tempString = (char*)calloc( strlen(buffer) + abs(difference) , sizeof(char) );
     strncpy( tempString, buffer, i );
     strncat( tempString, str2, strlen(str2) );   // Adding new string to replace to tempString
     strcat( tempString, buffer + i + strlen(str1) ); // Moving cursor(iter) 2 left to show the after appended string.
