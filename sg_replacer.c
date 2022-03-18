@@ -34,13 +34,10 @@ char** argDivider(char* arg, int *counter){
         if(arg[i] == ';') 
             numberOfOperations++;  
     }
-    char* tempArg = (char*)calloc( strlen(arg), sizeof(char) );
-    strncpy(tempArg, arg, strlen(arg));
 
     char** operations = (char**)calloc(numberOfOperations, sizeof(char*));
-    char *token = strtok(tempArg, ";");
+    char *token = strtok(arg, ";");
     for(i = 0; token != NULL && i < numberOfOperations; i++){
-        operations[i] = (char*)calloc(30, sizeof(char));
         operations[i] = token;
         token = strtok(NULL, ";");
     }
@@ -52,7 +49,7 @@ char** argDivider(char* arg, int *counter){
 void replacer(char* buffer, char** operations, int size){
     // For every operation (that's divided by / symbols on argument )
     for(int i=0; i<size; i++){    
-        char* tempOperation = (char*)calloc(strlen(operations[i]), sizeof(char));
+        char* tempOperation = (char*)calloc(strlen(operations[i])  , sizeof(char)); // + 1 because of '\0' character
         strncpy(tempOperation, operations[i], strlen(operations[i]));                                 
         ReplaceMode mode = SENSITIVE;
 
@@ -61,9 +58,10 @@ void replacer(char* buffer, char** operations, int size){
         // Parsing operations[i] again to get the second argument of operation
         char *str2 = strtok(NULL, "/");
         // Check if argumant contains 'i', if contains it's insensitive
-        if( strtok(NULL, "/") != NULL ){
-            mode = INSENSITIVE;
-        }
+        char* isI = strtok(NULL, "/");
+        if(isI != NULL)
+            if( strncmp(isI, "i", 1) == 0 )
+                mode = INSENSITIVE;
         
         // This function uses bitwise | operator in order to select replace mode in an easier way.
         if(str1[0] == '^'){        // if first argumant after / has ^ then it means it should support matching at line starts
@@ -81,11 +79,13 @@ void replacer(char* buffer, char** operations, int size){
 
         // If operation contains [ and ] characters than it supports multiple 
         if(strchr(operations[i], '[') != NULL && strchr(operations[i], ']') != NULL && ((mode & REPETITION) == 0) ){
-            multipleReplacer(buffer, ++operations[i], mode);  // Changing cursor 1 to the right so get rid of '/' symbol
+            multipleReplacer(buffer, operations[i] + 1, mode);  // Changing cursor 1 to the right so get rid of '/' symbol
+            free(tempOperation);
             continue;
         }
 
         replace(buffer, str1, str2, mode);                         // Replacing
+        free(tempOperation);
     }
 
 }
@@ -181,6 +181,7 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
             if( strncasecmp(buffer+i, strBeforeKeyValue, strlen(strBeforeKeyValue) ) == 0 ){ //If string before key value matches enter repetitionReplacer() to check more.
                 repetitionReplacer(buffer, i, strBeforeKeyValue, keyValue, strAfterKeyValue, str2, TRUE, mode );
             }
+            free(strBeforeKeyValue);
             continue;
         }
 
@@ -199,10 +200,11 @@ void replace(char* buffer, char *str1, char *str2, ReplaceMode mode){
                 buffer[j + strlen(tempString)] = '\0';
             buffer[strlen(tempString)] = '\0';
 
+            free(tempString);
         }
         
     }
-
+    
     if(foundFlag == FALSE && (mode & REPETITION /* 00001 */ ) != 1 ){
         write(2 /* file descriptor of stderr */ , "WARNING! One or more arguments you want to replace couldn't be found on file.\n", 79);
         return;
@@ -227,6 +229,7 @@ void repetitionReplacerWithBracket(char *buffer, int i, char *str1, char *str2, 
             isLast = TRUE;
         repetitionReplacer(buffer, i, strBeforeKeyValue, str1[j], strAfterKeyValue, str2, isLast, mode);
     }
+    free(strBeforeKeyValue);
 
 }
 
@@ -248,16 +251,20 @@ void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyVa
         strcpy(concatWith0Repetition, strBeforeKeyValue);
         strcat(concatWith0Repetition, strAfterKeyValue);
         // CONDITION : 0 repetition. Checking "sr9"
-        if(isLast != TRUE)
+        if(isLast != TRUE){
+            free(concatWith0Repetition);
             return; //WHat if other repetition condition has value with repetitions
+        }
         if( (mode & SENSITIVE) != 0 && strncmp(buffer + i, concatWith0Repetition, size) == 0){ //If sensitive and string matches
             str1 = concatWith0Repetition;
         }
         else if( (mode & INSENSITIVE) != 0 && strncasecmp(buffer + i, concatWith0Repetition, size) == 0){ //If not sensitive and string matches
             str1 = concatWith0Repetition;
         }
-        else 
+        else{
+            free(concatWith0Repetition);
             return; 
+        }
     }
     else if(repetitionCounter != 0){    
    
@@ -293,12 +300,15 @@ void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyVa
     
     if( (mode & LINE_START) != 0 ){ //then it means it contains ^
         if( i != 0 && (buffer+i-1)[0] != '\n'){ //Checking if starting of a line or the beginning of file.
+            free(str1);
             return;
         }
     }
     if( (mode & LINE_END) != 0 ){ //then it means it contains $
-        if( ((buffer + strlen(str1) + i)[0] != '\n') && ((buffer + strlen(str1) + i)[0] != '\0') ) // If next char is '\n' or EOF then it supports $
+        if( ((buffer + strlen(str1) + i)[0] != '\n') && ((buffer + strlen(str1) + i)[0] != '\0') ){ // If next char is '\n' or EOF then it supports $
+            free(str1);
             return;
+        }
     }
 
     char* tempString = (char*)calloc( strlen(buffer) + abs(difference) , sizeof(char) );
@@ -309,8 +319,9 @@ void repetitionReplacer(char *buffer, int i, char *strBeforeKeyValue, char keyVa
     for(int j=0; j < strlen(tempString); j++)
         buffer[j] = tempString[j];
     buffer[strlen(tempString)] = '\0';
-    //free(tempString);
     
+    free(str1);
+    free(tempString);
 }
 
 void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
@@ -337,6 +348,7 @@ void multipleReplacer(char* buffer, char* operation, ReplaceMode mode){
         strncat(string, arg1 + leftSqIndex + i, 1);    // Adding T and L to string in different cycles of loop
         strncat(string, arg1 + rightSqIndex + 1, size - (rightSqIndex+1) ); // Adding R1 (adding rest of it to string).
         replace(buffer, string, str2, mode);
+        free(string);
     }
 
 }

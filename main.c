@@ -17,7 +17,7 @@ int main(int argc, char *argv[]){
 
     if(stat(filePath, &statOfFile) < 0){
         perror("Error while opening the file.\n");
-        exit(EXIT_FAILURE);
+        printErrorAndExit();
     }
 
     char *buffer = (char*)calloc( statOfFile.st_size , sizeof(char));   // Buffer that data will be stored
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
 
     // PARSING OPERATIONS FROM COMMAND LINE ARGUMENT TO AN ARRAY
     int size = 0; //Will be used with call by reference
-    //char* command = "/^Window[sz]*/Linux/i;/close[dD]$/open/";
+    // char* command = "/^Window[sz]*/Linux/i;/close[dD]$/open/";
     // char** operations = argDivider( command, &size );
     char** operations = argDivider( argv[1], &size );
 
@@ -80,6 +80,10 @@ int main(int argc, char *argv[]){
         perror("Error while closing the file.");
         exit(6);
     }
+
+    // RELEASING / FREEING ALLOCATED MEMORY FOR OPERATIONS AND BUFFER
+    free(operations); //operations[i] values freed inside sg_replacer.c file. 
+    free(buffer);
 
     return 0;
 }
