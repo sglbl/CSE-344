@@ -17,20 +17,19 @@ int main(int argc, char *argv[]){
 
     if( stat(filePath, &statOfFile) < 0 || argc != 5 ){
         perror("Error while opening file.\n");
-        printErrorAndExit();
+        printUsageAndExit();
     }
 
     // Opening file in read/write mode
     if( (fileDesc = open(filePath, O_RDONLY, S_IWGRP)) == -1 ){
         perror("Error while opening file to read.\n");
-        exit(EXIT_FAILURE);
+        printUsageAndExit();
     }
 
+    // Reading file and inside this method creating child processes
     reader(fileDesc, argv);
 
-    // every 30 bytes will be sent to R_i as 10 coordinates
-
-     // READING IS COMPLETED. CLOSING THE FILE.
+     // Reading is completed. Closing the file.
     if( close(fileDesc) == -1 ){   
         perror("Error while closing the file.");
         exit(EXIT_FAILURE);

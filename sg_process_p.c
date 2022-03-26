@@ -6,10 +6,8 @@
 #include <unistd.h> // unix standard functions
 #include "sg_process_p.h"
 
-void printErrorAndExit(){
-    perror( "ERROR FOUND ON ARGUMENTS; PLEASE ENTER A VALID INPUT! INSTRUCTIONS:\n"
-    "./processP -i inputFilePath -o outputFilePath\n");
-    write(1 /* File descriptor for stdout */, "Goodbye!\n", 10);
+void printUsageAndExit(){
+    write(STDERR_FILENO, "INSTRUCTION: ./processP -i inputFilePath -o outputFilePath\nGoodbye!\n", 69);
     exit(EXIT_FAILURE);
 }
 
@@ -17,6 +15,7 @@ void reader(int fileDescriptor, char *argv[]){
     int readedByte;
     int i = 1; //Name of the children will be R_i
 
+    // Cleaning the output file in the case of it's not empty.
     cleanTheOutputFile(argv);
 
     while(TRUE){
@@ -30,7 +29,7 @@ void reader(int fileDescriptor, char *argv[]){
                     printf("Charbuffer is %c, and int value of it is %d\n", buffer[j][k], buffer[j][k]);
                 }
                 else if( readedByte <= 0 && errno == EINTR ){
-                    perror("File reading error. Goodbye\n");
+                    perror("File reading error. : ");
                     exit(EXIT_FAILURE);
                 }
                 else{
@@ -79,14 +78,16 @@ int spawn(char** argv, char** buffer, char* i){
 }
 
 void cleanTheOutputFile(char *argv[]){
+    // Clean output file and if doesn't exist create new one.
     int fileDesc;
-    if( (fileDesc = open(argv[4], O_WRONLY | O_TRUNC, S_IWGRP)) == -1 ){ // argv[4] is the name of the output file
+    if( (fileDesc = open(argv[4], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) == -1 ){
         perror("Error while opening file to write.\n");
-        exit(EXIT_FAILURE);
+        printUsageAndExit();
     }
-    // Now our output file is empty.
+
+    // Now our output file is empty. (And if doesn't exist it was created.)
     if( close(fileDesc) == -1 ){   
-        perror("Error while closing the file.");
+        perror("Error while closing the file. ");
         exit(EXIT_FAILURE);
     }
 

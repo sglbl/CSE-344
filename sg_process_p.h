@@ -10,7 +10,7 @@
 #define COORD_DIMENSIONS 3
 
 //* Prints error and instruction about how to run app */
-void printErrorAndExit();
+void printUsageAndExit();
 
 void reader(int fileDescriptor, char *argv[]);
 

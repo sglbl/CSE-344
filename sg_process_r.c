@@ -25,11 +25,13 @@ int main(int argc, char *argv[]){
     // Locking
     memset(&lock, 0, sizeof(lock)); //Initing structure of lock to 0.
     lock.l_type = F_WRLCK;  // F_WRLCK: Field of the structure of type flock for write lock.
-    if( fcntl(fileDesc, F_SETLKW, &lock) == -1 ){ // putting write lock on file. F_SETLKW: If a signalis caught while waiting, then the call is interrupted and (after signal handler returned) returns immediately.
+    if( fcntl(fileDesc, F_SETLKW, &lock) == -1 ){ // putting write lock on file. 
+        // F_SETLKW: If a signal is caught while waiting, then the call is interrupted and (after signal handler returned) returns immediately.
         perror("Error while locking fcntl(F_SETLK mode).\n");
         exit(EXIT_FAILURE);
     }
 
+    // Writing to file
     for(int j = 0; j < CHILD_SIZE; j++){
         while( write(fileDesc, "(", 1 ) == -1 && errno == EINTR )   {/* Intentionanlly Empty loop to deal interruptions by signal */}
         for(int k = 0; k < COORD_DIMENSIONS; k++){
