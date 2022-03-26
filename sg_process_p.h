@@ -6,6 +6,8 @@
 */
 #define TRUE 1
 #define FALSE 0
+#define CHILD_SIZE 10
+#define COORD_DIMENSIONS 3
 
 //* Prints error and instruction about how to run app */
 void printErrorAndExit();
@@ -14,9 +16,7 @@ void reader(int fileDescriptor, char *argv[]);
 
 int spawn(char *argv[], char *buffer[], char* i);
 
-
-/* Dividing argv[1] into different operations as 2D array / double pointer */
-char** argDivider(char* arg, int *counter);
+void cleanTheOutputFile(char *argv[]);
 
 
 

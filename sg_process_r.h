@@ -6,7 +6,8 @@
 */
 #define TRUE 1
 #define FALSE 0
-
+#define CHILD_SIZE 10
+#define COORD_DIMENSIONS 3
 
 
 #endif

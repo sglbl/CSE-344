@@ -6,9 +6,6 @@
 #include <unistd.h> // unix standard functions
 #include "sg_process_p.h"
 
-#define CHILD_SIZE 10
-#define COORD_DIMENSIONS 3
-
 void printErrorAndExit(){
     perror( "ERROR FOUND ON ARGUMENTS; PLEASE ENTER A VALID INPUT! INSTRUCTIONS:\n"
     "./processP -i inputFilePath -o outputFilePath\n");
@@ -19,6 +16,8 @@ void printErrorAndExit(){
 void reader(int fileDescriptor, char *argv[]){
     int readedByte;
     int i = 1; //Name of the children will be R_i
+
+    cleanTheOutputFile(argv);
 
     while(TRUE){
         // Allocating memory for buffer which will store the content of input file
@@ -43,7 +42,8 @@ void reader(int fileDescriptor, char *argv[]){
             }
         }
         char iValue = i;
-        spawn(argv, buffer, &iValue);
+        //Creating child processes with i value with fork() and execve()
+        spawn(argv, buffer, &iValue); 
         i++;
     }    
 
@@ -61,15 +61,12 @@ int spawn(char** argv, char** buffer, char* i){
     else{ 
         // pidCheckForChild is 0 so we are in child process.
         printf("This is the child.\n");
-        // char* iValueAsString = "i";
-        // iValueAsString[0] = (char)i;
-        printf("New i is %s\n", i);
 
         char *argList[] = {
             "./processR",
             i,
             "-o",
-            argv[4],
+            argv[4], // name of the output file comes from command line argument
             NULL
         };
 
@@ -79,7 +76,18 @@ int spawn(char** argv, char** buffer, char* i){
         exit(EXIT_FAILURE);
     }
 
-
-
 }
 
+void cleanTheOutputFile(char *argv[]){
+    int fileDesc;
+    if( (fileDesc = open(argv[4], O_WRONLY | O_TRUNC, S_IWGRP)) == -1 ){ // argv[4] is the name of the output file
+        perror("Error while opening file to write.\n");
+        exit(EXIT_FAILURE);
+    }
+    // Now our output file is empty.
+    if( close(fileDesc) == -1 ){   
+        perror("Error while closing the file.");
+        exit(EXIT_FAILURE);
+    }
+
+}
