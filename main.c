@@ -4,10 +4,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "sg_process.h"
-#define CHILD_SIZE 10
-#define COORD_DIMENSIONS 3
-
+#include "sg_process_p.h"
+#include "sg_process_r.h"
 
 int main(int argc, char *argv[]){
     // Default range for char[signed] (1 byte) -> -128 to 127

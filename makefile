@@ -1,14 +1,16 @@
 target: compile
 
-compile: main.c main.c sg_process.h
-	gcc *.c -Wall -o processP
+compile: main.c sg_process_p.h sg_process_r.h
+	gcc -Wall main.c sg_process_p.c -o processP 
+	gcc -Wall sg_process_r.c -o processR
 	
 run:
-	gcc *.c -Wall -o processP
+	gcc -Wall main.c sg_process_p.c -o processP 
+	gcc -Wall sg_process_r.c -o processR
 	./processP $(args)
 # Example usage while executing --> [Note: "make run args" doesn't support using dollar sign within ]
 # make run args="-i inputFilePath -o outputFilePath"
-# make run args="-i files/inputFile.dat -o files/outputFilePath.txt"
+# make run args="-i files/inputFile.dat -o files/outputFilePath.dat"
 
 debug:
 	gcc -g *.c -Wall -o processP
