@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
     }
 
     // Reading file and inside this method creating child processes
-    reader(fileDesc, argv);
+    reader(fileDesc, argv, statOfFile.st_size);
 
      // Reading is completed. Closing the file.
     if( close(fileDesc) == -1 ){   
