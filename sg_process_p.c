@@ -4,6 +4,7 @@
 #include <errno.h> // spesific error message
 #include <fcntl.h> // provide control over open files
 #include <unistd.h> // unix standard functions
+#include <sys/wait.h>
 #include "sg_process_p.h"
 
 void printUsageAndExit(){
@@ -50,12 +51,31 @@ void reader(int fileDescriptor, char *argv[]){
 }
 
 int spawn(char** argv, char** buffer, char* i){
+    pid_t childPid;
+    int status;
+    int deadNo = 0;
+
     pid_t pidCheckForChild = fork(); // Duplicating this process.
+
     if( pidCheckForChild != 0){
          // pidCheckForChild is not 0, so it's the parent process.
         printf("This is the parent.\n");
         // ÇÇ check for if all children returned, so we can calculate
-        return pidCheckForChild;
+        while(TRUE){
+            childPid = wait(NULL); // Wait until all children terminate.
+            if(childPid == -1){
+                if(errno == ECHILD){
+                    write(STDOUT_FILENO, "All children are terminated!\n", 30);
+                    exit(EXIT_SUCCESS);
+                }
+                else
+                    perror("Error on wait() command ");
+            }
+            deadNo++;
+            printf("Deadno is %d\n", deadNo);
+
+        }
+
     }
     else{ 
         // pidCheckForChild is 0 so we are in child process.
