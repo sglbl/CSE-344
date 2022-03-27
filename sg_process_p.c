@@ -88,18 +88,67 @@ void spawn(char** argv, char ***buffer){
             // write(STDOUT_FILENO, "This is the parent.\n", 21);
             
             if( waitpid(pidCheckIfChild[i], &status, 0) == -1 ){ // Wait until all children terminate.
-                if(errno == ECHILD){
+                if(errno != ECHILD){
+                    perror("Error on wait() command ");
+                    exit(EXIT_FAILURE);
+                }
+                else{
                     write(STDOUT_FILENO, "All children are terminated!\n", 30);
                     exit(EXIT_SUCCESS);
                 }
-                else
-                    perror("Error on wait() command ");
             }
-
+            
         }
     }
-    
+    write(STDOUT_FILENO, "Reached EOF, collecting outputs from ", 39);
+    write(STDOUT_FILENO, argv[4], sg_strlen(argv[4]) );
+    write(STDOUT_FILENO, "\n", 1);
 
+    // Collecting outputs from children.
+    collectOutputFromChildren(argv[4]);  // argv[4] is the output path
+
+
+}
+
+void collectOutputFromChildren(char *filePath){
+
+    double *value = (double*)malloc(sizeof(double));
+    int fileDescOfOutputFile;
+
+    // Opening file in read mode
+    if( (fileDescOfOutputFile = open(filePath, O_RDONLY, S_IRGRP)) == -1 ){  
+        perror("Error while opening file to read.\n");
+        printUsageAndExit();
+    }
+
+    int readedByte;
+    for(int i=0; /* Con*/ ; i++){
+        for(int j = 0; j < CHILD_SIZE; j++){
+            for(int k = 0; k < COORD_DIMENSIONS; k++){
+                // Reading files/output.dat file with system call with checking return value
+                if( (readedByte = read(fileDescOfOutputFile, value , sizeof(double*))) > 0 ){
+                    // printf("Value is %f\n", *value);
+                    // printf("Charbuffer is %c, and int value of it is %d\n", buffer[i][j][k], buffer[i][j][k]);
+                }
+                else if( readedByte <= 0 && errno == EINTR ){
+                    perror("File reading error. : ");
+                    exit(EXIT_FAILURE);
+                }
+                else{
+                    write(STDOUT_FILENO, "Output file reading finished.\n", 31);
+                    return;
+                }
+
+
+            }
+        }
+    }
+
+    // Reading is completed. Closing the file.
+    if( close(fileDescOfOutputFile) == -1 ){   
+        perror("Error while closing the file.");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void cleanTheOutputFile(char *argv[]){

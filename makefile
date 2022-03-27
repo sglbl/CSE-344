@@ -1,12 +1,12 @@
 target: compile
 
 compile: main.c sg_process_p.h sg_process_r.h
-	gcc -Wall main.c sg_process_p.c -o processP 
-	gcc -Wall sg_process_r.c -o processR
+	gcc -Wall main.c sg_process_p.c -lm -o processP 
+	gcc -Wall sg_matrix.c sg_process_r.c -lm -o processR
 	
 run:
-	gcc -Wall main.c sg_process_p.c -o processP 
-	gcc -Wall sg_process_r.c -o processR
+	gcc -Wall main.c sg_process_p.c -lm -o processP 
+	gcc -Wall sg_matrix.c sg_process_r.c -lm -o processR
 	./processP $(args)
 # Example usage while executing --> [Note: "make run args" doesn't support using dollar sign within ]
 # make run args="-i inputFilePath -o outputFilePath"

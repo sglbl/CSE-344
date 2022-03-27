@@ -16,4 +16,8 @@ void printChildInfo(int childNumber);
 /* Converts integer to string(char*) for non-negative ascii values. */
 char* itoaForAscii(int number);
 
+double** findCovarianceMatrix();
+
+void writeToFile(int fileDesc, double **covarianceMatrix);
+
 #endif

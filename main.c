@@ -20,7 +20,7 @@ int main(int argc, char *argv[]){
         printUsageAndExit();
     }
 
-    // Opening file in read/write mode
+    // Opening file in read mode
     if( (fileDesc = open(filePath, O_RDONLY, S_IWGRP)) == -1 ){
         perror("Error while opening file to read.\n");
         printUsageAndExit();
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
     // Reading file and inside this method creating child processes
     reader(fileDesc, argv, statOfFile.st_size);
 
-     // Reading is completed. Closing the file.
+    // Reading is completed. Closing the file.
     if( close(fileDesc) == -1 ){   
         perror("Error while closing the file.");
         exit(EXIT_FAILURE);

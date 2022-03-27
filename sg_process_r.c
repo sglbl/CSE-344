@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
+#include <string.h> // For memset() function for the locking mechanism
 #include <errno.h> // spesific error message
 #include <fcntl.h> // provide control over open files
 #include <unistd.h> // unix standard functions
 #include "sg_process_r.h"
+#include "sg_matrix.h"
 
 extern char **environ;  // Environment variables that will be passed to child process and will come from "sg_process_p.c"
 
@@ -30,16 +31,11 @@ int main(int argc, char *argv[]){
         perror("Error while locking fcntl(F_SETLK mode).\n");
         exit(EXIT_FAILURE);
     }
+    printf("\n");
+    double **covarianceMatrix = findCovarianceMatrix();
 
     // Writing to file
-    for(int j = 0; j < CHILD_SIZE; j++){
-        while( write(fileDesc, "(", 1 ) == -1 && errno == EINTR )   {/* Intentionanlly Empty loop to deal interruptions by signal */}
-        for(int k = 0; k < COORD_DIMENSIONS; k++){
-            while( write(fileDesc, &environ[j][k], sizeof(char) ) == -1 && errno == EINTR ){}
-        }
-        while( write(fileDesc, ")", sizeof(char) ) == -1 && errno == EINTR ){}
-    }
-    while( write(fileDesc, "\n", sizeof(char) ) == -1 && errno == EINTR ){}
+    writeToFile(fileDesc, covarianceMatrix);
 
     // Printing child info
     printChildInfo(i);
@@ -57,6 +53,63 @@ int main(int argc, char *argv[]){
     }
 
     return 0;
+}
+
+double** findCovarianceMatrix(){
+    // Formula:        a = A – 1*A*( 1 / n )
+    // Covariance matrix = a‘ * a / n
+    // Reference: https://bilgisayarkavramlari.com/2008/12/29/kovaryans-matrisi-covariance-matrix/
+
+    double **dataset = (double**)calloc( CHILD_SIZE, sizeof(double*) );
+    double **tempMatrix = (double**)calloc( CHILD_SIZE, sizeof(double*) );
+    for(int j = 0; j < CHILD_SIZE; j++){
+        dataset[j] = (double*)calloc( COORD_DIMENSIONS, sizeof(double*) );
+        tempMatrix[j] = (double*)calloc( COORD_DIMENSIONS, sizeof(double*) );
+        for(int k = 0; k < COORD_DIMENSIONS; k++){
+            dataset[j][k] = (double)environ[j][k];
+            // printf("%.2f ", dataset[j][k]);
+        }
+        // printf("\n");
+    }
+    
+
+    tempMatrix = matrixMultiplicationFor10x3(dataset);
+    divide10x3MatrixTo10(tempMatrix);
+    substract10x3Matrices(dataset, tempMatrix);
+
+    double **covarianceMatrix;
+    covarianceMatrix = multiplyWithItsTranspose(dataset);
+    divide3x3MatrixTo10(covarianceMatrix);
+
+    // Freeing tempMatrix because not needed anymore.
+    for(int j = 0; j < CHILD_SIZE; j++){
+        free(tempMatrix[j]);
+    }
+    free(tempMatrix);
+
+    // Freeing dataset because not needed anymore.
+    for(int j = 0; j < CHILD_SIZE; j++){
+        free(dataset[j]);
+    }
+    free(dataset);
+
+    for(int i = 0; i < 3; i++){
+        for(int j = 0; j < 3; j++)
+            printf("%.3f ", covarianceMatrix[i][j] );
+        printf("\n");
+    }
+
+    return covarianceMatrix;
+}
+
+void writeToFile(int fileDesc, double **covarianceMatrix){
+    // Size of covariance matrix is 3x3. 
+    for(int j = 0; j < COORD_DIMENSIONS; j++){
+        for(int k = 0; k < COORD_DIMENSIONS; k++)
+            while( write(fileDesc, &covarianceMatrix[j][k], sizeof(covarianceMatrix[j][k]) ) == -1 && errno == EINTR ){}
+    }
+    while( write(fileDesc, "\n", sizeof(char) ) == -1 && errno == EINTR ){}
+
 }
 
 /* Printing child information */

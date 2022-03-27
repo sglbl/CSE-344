@@ -18,6 +18,8 @@ void reader(int fileDescriptor, char *argv[], int fileSize);
 /* Creates child process and uses waitpid to make sure parent process waits for child process to finish */
 void spawn(char *argv[], char ***buffer);
 
+void collectOutputFromChildren(char *filePath);
+
 /* Cleans the output file and if doesn't exist->creates. */
 void cleanTheOutputFile(char *argv[]);
 
