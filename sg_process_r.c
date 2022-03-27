@@ -31,7 +31,8 @@ int main(int argc, char *argv[]){
         perror("Error while locking fcntl(F_SETLK mode).\n");
         exit(EXIT_FAILURE);
     }
-    printf("\n");
+    
+    write(STDOUT_FILENO, "\n", 1);
     double **covarianceMatrix = findCovarianceMatrix();
 
     // Writing to file
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]){
 double** findCovarianceMatrix(){
     // Formula:        a = A – 1*A*( 1 / n )
     // Covariance matrix = a‘ * a / n
-    // Reference: https://bilgisayarkavramlari.com/2008/12/29/kovaryans-matrisi-covariance-matrix/
+    // Reference: https://stattrek.com/matrix-algebra/covariance-matrix.aspx
 
     double **dataset = (double**)calloc( CHILD_SIZE, sizeof(double*) );
     double **tempMatrix = (double**)calloc( CHILD_SIZE, sizeof(double*) );
@@ -72,7 +73,6 @@ double** findCovarianceMatrix(){
         // printf("\n");
     }
     
-
     tempMatrix = matrixMultiplicationFor10x3(dataset);
     divide10x3MatrixTo10(tempMatrix);
     substract10x3Matrices(dataset, tempMatrix);
@@ -108,7 +108,7 @@ void writeToFile(int fileDesc, double **covarianceMatrix){
         for(int k = 0; k < COORD_DIMENSIONS; k++)
             while( write(fileDesc, &covarianceMatrix[j][k], sizeof(covarianceMatrix[j][k]) ) == -1 && errno == EINTR ){}
     }
-    while( write(fileDesc, "\n", sizeof(char) ) == -1 && errno == EINTR ){}
+    //while( write(fileDesc, "\n", sizeof(char) ) == -1 && errno == EINTR ){}
 
 }
 

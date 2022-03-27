@@ -112,7 +112,7 @@ void spawn(char** argv, char ***buffer){
 
 void collectOutputFromChildren(char *filePath){
 
-    double *value = (double*)malloc(sizeof(double));
+    double value;
     int fileDescOfOutputFile;
 
     // Opening file in read mode
@@ -126,9 +126,8 @@ void collectOutputFromChildren(char *filePath){
         for(int j = 0; j < CHILD_SIZE; j++){
             for(int k = 0; k < COORD_DIMENSIONS; k++){
                 // Reading files/output.dat file with system call with checking return value
-                if( (readedByte = read(fileDescOfOutputFile, value , sizeof(double*))) > 0 ){
-                    // printf("Value is %f\n", *value);
-                    // printf("Charbuffer is %c, and int value of it is %d\n", buffer[i][j][k], buffer[i][j][k]);
+                if( (readedByte = read(fileDescOfOutputFile, &value , sizeof(value))) > 0 ){
+                    printf("Value is %f\n", value);
                 }
                 else if( readedByte <= 0 && errno == EINTR ){
                     perror("File reading error. : ");
@@ -136,6 +135,11 @@ void collectOutputFromChildren(char *filePath){
                 }
                 else{
                     write(STDOUT_FILENO, "Output file reading finished.\n", 31);
+                    // Reading is completed. Closing the file.
+                    if( close(fileDescOfOutputFile) == -1 ){   
+                        perror("Error while closing the file.");
+                        exit(EXIT_FAILURE);
+                    }
                     return;
                 }
 
@@ -144,11 +148,6 @@ void collectOutputFromChildren(char *filePath){
         }
     }
 
-    // Reading is completed. Closing the file.
-    if( close(fileDescOfOutputFile) == -1 ){   
-        perror("Error while closing the file.");
-        exit(EXIT_FAILURE);
-    }
 }
 
 void cleanTheOutputFile(char *argv[]){
