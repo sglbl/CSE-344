@@ -12,12 +12,9 @@ void printUsageAndExit(){
     exit(EXIT_FAILURE);
 }
 
-void freeingBuffer(char ***buffer, int size){
-    for(int i=0; i < size; i++){
-        for(int j = 0; j < CHILD_SIZE + 1; j++)
-            free(buffer[i][j]);
+void freeingBuffer(char **buffer, int size){
+    for(int i=0; i < size; i++)
         free(buffer[i]);
-    }
     free(buffer);
 }
 
@@ -90,6 +87,7 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
             }
             else{
                 write(STDOUT_FILENO, "All children are terminated!\n", 30);
+                freeingBuffer(buffer, fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 );
                 collectOutputFromChildren(argv[4]);  // argv[4] is the output path
                 exit(EXIT_SUCCESS);
             }
