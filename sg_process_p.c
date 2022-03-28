@@ -12,6 +12,15 @@ void printUsageAndExit(){
     exit(EXIT_FAILURE);
 }
 
+void freeingBuffer(char ***buffer, int size){
+    for(int i=0; i < size; i++){
+        for(int j = 0; j < CHILD_SIZE + 1; j++)
+            free(buffer[i][j]);
+        free(buffer[i]);
+    }
+    free(buffer);
+}
+
 void reader(int fileDescriptor, char *argv[], int fileSize){
     int readedByte;
 
@@ -22,13 +31,14 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
     write(STDOUT_FILENO, argv[4], sg_strlen(argv[4]) );
     write(STDOUT_FILENO, "\n", 1);
 
-    char ***buffer = (char***)calloc( fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 1 , sizeof(char**) );
+    printf("File size is %d\n", fileSize);
+    char ***buffer = (char***)calloc( fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 , sizeof(char**) );
     for(int i=0; /* Continue until reading all file or error situation */ ; i++){     //Name of the children will be R_i
         // Allocating memory for buffer which will store the content of input file
         buffer[i] = (char**)calloc( CHILD_SIZE + 1, sizeof(char*) );
         for(int j = 0; j < CHILD_SIZE; j++){
 
-            buffer[i][j] = (char*)calloc( COORD_DIMENSIONS, sizeof(char*) );
+            buffer[i][j] = (char*)calloc( COORD_DIMENSIONS, sizeof(char) );
             for(int k = 0; k < COORD_DIMENSIONS; k++){
                 if( (readedByte = read(fileDescriptor, &buffer[i][j][k], 1 /* read 1 byte */)) > 0 ){
                     checkIfNonAscii(buffer[i][j][k]);
@@ -38,9 +48,10 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
                     exit(EXIT_FAILURE);
                 }
                 else{
-                    buffer[i] = NULL;
                     write(STDOUT_FILENO, "File reading finished.\n", 24);
+                    printf("i is %d\n", i);
                     spawn(argv, buffer);    // Spawning children 
+                    freeingBuffer(buffer, fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 1 );
                     return;
                 }
                 
@@ -48,6 +59,7 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
         }
 
     }   //End of for loop
+    
     
 }
 
@@ -69,6 +81,9 @@ void spawn(char** argv, char ***buffer){
                 NULL
             };
 
+            if( buffer[i+1] == NULL )
+                break;
+                
             // Calling other c file to handle the child process.
             execve("./processR", argList, buffer[i] /* environment variables in array */);
 
@@ -157,7 +172,7 @@ void collectOutputFromChildren(char *filePath){
     calcFrobeniusNorm(output, fileSize);
 
     // Freeing memory.
-    for(int i = 0; i < fileSize / CHILD_SIZE; i++){
+    for(int i = 0; i < fileSize / 9; i++){
         free(output[i]);
     }
     free(output);
@@ -189,15 +204,24 @@ void calcFrobeniusNorm(double **output, int fileSize){
             }
         }
     }
+
+    char *dist1, *dist2, *closestDistanceStr;
+
+    dist1 = itoaForAscii(closestDistanceIndex1 + 1);
+    dist2 = itoaForAscii(closestDistanceIndex2 + 1);
+    closestDistanceStr = basicFtoa(closestDistance);
     
+
     write(STDOUT_FILENO ,"The closest 2 matrices are ", 28);
-    write(STDOUT_FILENO , itoaForAscii(closestDistanceIndex1) , sizeof(itoaForAscii(closestDistanceIndex1)) );
+    write(STDOUT_FILENO , dist1 , sg_strlen(dist1) );
     write(STDOUT_FILENO ," and ", 6);
-    write(STDOUT_FILENO , itoaForAscii(closestDistanceIndex2) , sizeof(itoaForAscii(closestDistanceIndex2)) );
+    write(STDOUT_FILENO , dist2 , sg_strlen(dist2) );
     write(STDOUT_FILENO ,", and their distance is ", 25);
-    write(STDOUT_FILENO , basicFtoa(closestDistance), sizeof(basicFtoa(closestDistance)) );
+    write(STDOUT_FILENO , closestDistanceStr, sg_strlen(closestDistanceStr) );
     write(STDOUT_FILENO ,"\n", 1);
 
+    free(dist1); free(dist2); free(closestDistanceStr);
+    free(sum);
 }
 
 void cleanTheOutputFile(char *argv[]){
@@ -233,7 +257,9 @@ int sg_strlen(char* string){
 /* Double to string for basic nonnegative distance values. */
 char* basicFtoa(double number){
     if(number > -0.001 && number < 0.001){ // Precision because it's a bad practice to compare double with 0.
-        return "0";
+        char* string = calloc(2, sizeof(char));
+        string[0] = '0';    string[1] = '\0';
+        return string;
     }
 
     int i;
@@ -271,9 +297,9 @@ char* basicFtoa(double number){
 
 char* itoaForAscii(int number){
     if(number == 0){
-        // char* string = calloc(1, sizeof(char));
-        // return string;
-        return "0";
+        char* string = calloc(2, sizeof(char));
+        string[0] = '0';    string[1] = '\0';
+        return string;
     }
     int digitCounter = 0;
     int temp = number;
@@ -289,6 +315,5 @@ char* itoaForAscii(int number){
         number /= 10;
     }
     string[digitCounter] = '\0';
-    
     return string;
 }

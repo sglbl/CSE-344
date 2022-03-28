@@ -17,7 +17,7 @@ int main(int argc, char *argv[]){
     int fileDesc;             // Directory stream file descriptor for file writing
     struct flock lock;        // Lock structure of the file.
 
-    // Opening file in read/write mode
+    // Opening file in write mode
     if( (fileDesc = open(filePath, O_WRONLY | O_APPEND, S_IWGRP)) == -1 ){
         perror("Error while opening file to write.\n");
         exit(EXIT_FAILURE);
@@ -114,36 +114,48 @@ void writeToFile(int fileDesc, double **covarianceMatrix){
 /* Printing child information */
 void printChildInfo(int childNumber){
     // Because of printf and snprintf are not signal safe, I used write(). 
-    // For formatting from int to string I used itoaForAscii(int) function.
+    // For formatting from int to string I used itaaForAscii(int) function.
+
+    // Creating char* variables to free them after.
+    char *childNum, *val00, *val01, *val02, *val10, *val11, *val12, *val90, *val91, *val92;
     
     write(STDOUT_FILENO, "Created R_", 11);
-    write(STDOUT_FILENO, itoaForAscii(childNumber), sizeof( itoaForAscii(childNumber) ) );
+    write(STDOUT_FILENO, childNum = itoaForAscii(childNumber), sizeof( itoaForAscii(childNumber) ) );
     write(STDOUT_FILENO, " with (", 8);
-    write(STDOUT_FILENO, itoaForAscii( environ[0][0] ), sizeof( itoaForAscii(environ[0][0]) ) );
+    write(STDOUT_FILENO, val00 = itoaForAscii( environ[0][0] ), sizeof( itoaForAscii(environ[0][0]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, itoaForAscii( environ[0][1] ), sizeof( itoaForAscii(environ[0][1]) ) );
+    write(STDOUT_FILENO, val01 = itoaForAscii( environ[0][1] ), sizeof( itoaForAscii(environ[0][1]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, itoaForAscii( environ[0][2] ), sizeof( itoaForAscii(environ[0][2]) ) );
+    write(STDOUT_FILENO, val02 = itoaForAscii( environ[0][2] ), sizeof( itoaForAscii(environ[0][2]) ) );
     write(STDOUT_FILENO, "), (", 4);
-    write(STDOUT_FILENO, itoaForAscii( environ[1][0] ), sizeof( itoaForAscii(environ[1][0]) ) );
+    write(STDOUT_FILENO, val10 = itoaForAscii( environ[1][0] ), sizeof( itoaForAscii(environ[1][0]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, itoaForAscii( environ[1][1] ), sizeof( itoaForAscii(environ[1][1]) ) );
+    write(STDOUT_FILENO, val11 = itoaForAscii( environ[1][1] ), sizeof( itoaForAscii(environ[1][1]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, itoaForAscii( environ[1][2] ), sizeof( itoaForAscii(environ[1][2]) ) );
+    write(STDOUT_FILENO, val12 = itoaForAscii( environ[1][2] ), sizeof( itoaForAscii(environ[1][2]) ) );
     write(STDOUT_FILENO, "), ..., (", 10);
-    write(STDOUT_FILENO, itoaForAscii( environ[CHILD_SIZE-1][0] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][0] ) ) );
+    write(STDOUT_FILENO, val90 = itoaForAscii( environ[CHILD_SIZE-1][0] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][0] ) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, itoaForAscii( environ[CHILD_SIZE-1][1] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][1] ) ) );
+    write(STDOUT_FILENO, val91 = itoaForAscii( environ[CHILD_SIZE-1][1] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][1] ) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, itoaForAscii( environ[CHILD_SIZE-1][2] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][2] ) ) );
+    write(STDOUT_FILENO, val92 = itoaForAscii( environ[CHILD_SIZE-1][2] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][2] ) ) );
     write(STDOUT_FILENO, ")\n", 2);
+
+    // Freeing
+    free(val00); free(val01); free(val02);
+    free(val10); free(val11); free(val12);
+    free(val90); free(val91); free(val92);
+    free(childNum);
 
 }
 
 char* itoaForAscii(int number){
     if(number == 0){
-        return "";
+        char* string = calloc(2, sizeof(char));
+        string[0] = '0';    string[1] = '\0';
+        return string;
     }
+
     int digitCounter = 0;
     int temp = number;
     while(temp != 0){
@@ -151,7 +163,7 @@ char* itoaForAscii(int number){
         digitCounter++;
     }
     
-    char* string = calloc(sizeof(char), (digitCounter+1));
+    char* string = calloc((digitCounter+1), sizeof(char));
     for(int i = 0; i < digitCounter; i++){
         char temp = (number % 10) + '0';
         string[digitCounter-i-1] = temp;
