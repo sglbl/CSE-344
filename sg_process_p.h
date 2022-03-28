@@ -18,13 +18,23 @@ void reader(int fileDescriptor, char *argv[], int fileSize);
 /* Creates child process and uses waitpid to make sure parent process waits for child process to finish */
 void spawn(char *argv[], char ***buffer);
 
+/* Collects output from children as binary and stores as double** */
 void collectOutputFromChildren(char *filePath);
+
+/* Calculates Frobenius Norm */
+void calcFrobeniusNorm(double **output, int fileSize);
 
 /* Cleans the output file and if doesn't exist->creates. */
 void cleanTheOutputFile(char *argv[]);
 
 /* Checks if the char is non-ascii */
 void checkIfNonAscii(char character);
+
+/* Converts ascii non-negative integer to string value */
+char* itoaForAscii(int number);
+
+/* Double to string for basic nonnegative distance values. */
+char* basicFtoa(double number);
 
 /* Returns the size of string */
 int sg_strlen(char* string);

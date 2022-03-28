@@ -32,7 +32,6 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
             for(int k = 0; k < COORD_DIMENSIONS; k++){
                 if( (readedByte = read(fileDescriptor, &buffer[i][j][k], 1 /* read 1 byte */)) > 0 ){
                     checkIfNonAscii(buffer[i][j][k]);
-                    // printf("Charbuffer is %c, and int value of it is %d\n", buffer[i][j][k], buffer[i][j][k]);
                 }
                 else if( readedByte <= 0 && errno == EINTR ){
                     perror("File reading error. : ");
@@ -111,8 +110,6 @@ void spawn(char** argv, char ***buffer){
 }
 
 void collectOutputFromChildren(char *filePath){
-
-    double value;
     int fileDescOfOutputFile;
 
     // Opening file in read mode
@@ -121,32 +118,85 @@ void collectOutputFromChildren(char *filePath){
         printUsageAndExit();
     }
 
+    // Get size of the file using lseek()
+    int fileSize = lseek(fileDescOfOutputFile, 0, SEEK_END);
+    lseek(fileDescOfOutputFile, 0, SEEK_SET);
+    fileSize /= sizeof(double);
+
+    // // Create an double array to store the output of the children.
+    double **output = (double**)calloc( fileSize / 9 , sizeof(double*) );
+    for(int i = 0; i < fileSize / 9; i++){
+        output[i] = (double*)calloc( 9 , sizeof(double*) );
+    }
+
     int readedByte;
-    for(int i=0; /* Con*/ ; i++){
-        for(int j = 0; j < CHILD_SIZE; j++){
-            for(int k = 0; k < COORD_DIMENSIONS; k++){
-                // Reading files/output.dat file with system call with checking return value
-                if( (readedByte = read(fileDescOfOutputFile, &value , sizeof(value))) > 0 ){
-                    printf("Value is %f\n", value);
-                }
-                else if( readedByte <= 0 && errno == EINTR ){
-                    perror("File reading error. : ");
-                    exit(EXIT_FAILURE);
-                }
-                else{
-                    write(STDOUT_FILENO, "Output file reading finished.\n", 31);
-                    // Reading is completed. Closing the file.
-                    if( close(fileDescOfOutputFile) == -1 ){   
-                        perror("Error while closing the file.");
-                        exit(EXIT_FAILURE);
-                    }
-                    return;
-                }
+    int ct=0;
+    for(int j = 0; j < fileSize / 9; j++){
+        for(int k = 0; k < 9; k++){ //Because there are 9 coordiantes in each child process.
+            // Reading files/output.dat file with system call with checking return value
+            if( ( readedByte = read(fileDescOfOutputFile, &output[j][k] , sizeof(output[j][k])) ) > 0 ){
+                ct++;
+            }
+            else if( readedByte <= 0 && errno == EINTR ){
+                perror("File reading error. : ");
+                exit(EXIT_FAILURE);
+            }
+            else{
+                // There will be no else because we know exactly the size of file by help of lseek()
+            }
 
+        }
+    }
+    write(STDOUT_FILENO, "Output file reading finished.\n", 31);
+    // Reading is completed. Closing the file.
+    if( close(fileDescOfOutputFile) == -1 ){   
+        perror("Error while closing the file.");
+        exit(EXIT_FAILURE);
+    }
+    
+    calcFrobeniusNorm(output, fileSize);
 
+    // Freeing memory.
+    for(int i = 0; i < fileSize / CHILD_SIZE; i++){
+        free(output[i]);
+    }
+    free(output);
+
+}
+
+void calcFrobeniusNorm(double **output, int fileSize){
+    double *sum = (double*)calloc( fileSize / 9 , sizeof(double) ); // 9 because each matrix is 3x3.
+
+    for(int i = 0; i < fileSize / 9 ; i++){
+        // Calculating frobenius norm of each child process output.
+        for(int j = 0; j < 9; j++)
+                sum[i] += pow(output[i][j], 2);
+        sum[i] = sqrt(sum[i]);
+        // printf("sum[i] is %.3f\n", sum[i]);
+    }
+
+    // Comparing the frobenius norm of each child process output to get the closest two.
+    double closestDistance = fabs(sum[1] - sum[0]);
+    int closestDistanceIndex1 = 0;
+    int closestDistanceIndex2 = 0;
+
+    for(int i = 1; i < fileSize / 9; i++){
+        for(int j = 0; j < i; j++){
+             if( closestDistance > fabs(sum[i] - sum[j]) ){
+                closestDistance = fabs(sum[i] - sum[j]);
+                closestDistanceIndex1 = i;
+                closestDistanceIndex2 = j;
             }
         }
     }
+    
+    write(STDOUT_FILENO ,"The closest 2 matrices are ", 28);
+    write(STDOUT_FILENO , itoaForAscii(closestDistanceIndex1) , sizeof(itoaForAscii(closestDistanceIndex1)) );
+    write(STDOUT_FILENO ," and ", 6);
+    write(STDOUT_FILENO , itoaForAscii(closestDistanceIndex2) , sizeof(itoaForAscii(closestDistanceIndex2)) );
+    write(STDOUT_FILENO ,", and their distance is ", 25);
+    write(STDOUT_FILENO , basicFtoa(closestDistance), sizeof(basicFtoa(closestDistance)) );
+    write(STDOUT_FILENO ,"\n", 1);
 
 }
 
@@ -178,4 +228,67 @@ int sg_strlen(char* string){
     while( string[counter] != '\0' )
         counter++;
     return counter;
+}
+
+/* Double to string for basic nonnegative distance values. */
+char* basicFtoa(double number){
+    if(number > -0.001 && number < 0.001){ // Precision because it's a bad practice to compare double with 0.
+        return "0";
+    }
+
+    int i;
+    // Counting digit for integer part of double
+    int intDigitCounter = 0;
+    int doubleDigitCounter = 0;
+    int tempNumber = (int)number;
+    while(tempNumber != 0){
+        tempNumber /= 10;
+        intDigitCounter++;
+    }
+
+    doubleDigitCounter = 3;
+
+    // Number before '.'  to string.
+    tempNumber = (int)number;
+    char* string = calloc(intDigitCounter + 2 + doubleDigitCounter, sizeof(char) );
+    for(i = 0; i < intDigitCounter; i++){
+        char temp = (tempNumber % 10) + '0';
+        string[intDigitCounter-i-1] = temp;
+        tempNumber /= 10;
+    }
+    string[i++] = '.'; // Adding dot between int and floating point part of the number.
+
+    // Number after '.'  to string.
+    tempNumber = (number - (int)number)*1000;
+    for(int j = 0; j < doubleDigitCounter; j++){
+        char temp = (tempNumber % 10) + '0';
+        string[i + doubleDigitCounter - j - 1] = temp;
+        tempNumber /= 10;
+    }
+    string[i + doubleDigitCounter] = '\0';
+    return string;
+}
+
+char* itoaForAscii(int number){
+    if(number == 0){
+        // char* string = calloc(1, sizeof(char));
+        // return string;
+        return "0";
+    }
+    int digitCounter = 0;
+    int temp = number;
+    while(temp != 0){
+        temp /= 10;
+        digitCounter++;
+    }
+    
+    char* string = calloc(digitCounter+1, sizeof(char) );
+    for(int i = 0; i < digitCounter; i++){
+        char temp = (number % 10) + '0';
+        string[digitCounter-i-1] = temp;
+        number /= 10;
+    }
+    string[digitCounter] = '\0';
+    
+    return string;
 }

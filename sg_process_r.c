@@ -32,14 +32,13 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
     
-    write(STDOUT_FILENO, "\n", 1);
+    // Printing child info
+    printChildInfo(i);
+
     double **covarianceMatrix = findCovarianceMatrix();
 
     // Writing to file
     writeToFile(fileDesc, covarianceMatrix);
-
-    // Printing child info
-    printChildInfo(i);
 
     // Unlocking
     lock.l_type = F_UNLCK;
@@ -68,9 +67,7 @@ double** findCovarianceMatrix(){
         tempMatrix[j] = (double*)calloc( COORD_DIMENSIONS, sizeof(double*) );
         for(int k = 0; k < COORD_DIMENSIONS; k++){
             dataset[j][k] = (double)environ[j][k];
-            // printf("%.2f ", dataset[j][k]);
         }
-        // printf("\n");
     }
     
     tempMatrix = matrixMultiplicationFor10x3(dataset);
@@ -93,11 +90,13 @@ double** findCovarianceMatrix(){
     }
     free(dataset);
 
-    for(int i = 0; i < 3; i++){
-        for(int j = 0; j < 3; j++)
-            printf("%.3f ", covarianceMatrix[i][j] );
-        printf("\n");
-    }
+    // printf("Covariance matrix is \n");
+    // for(int i = 0; i < 3; i++){
+    //     for(int j = 0; j < 3; j++){
+    //         printf("%.3f ", covarianceMatrix[i][j] );
+    //     }
+    //     printf("\n");
+    // }
 
     return covarianceMatrix;
 }
@@ -105,11 +104,11 @@ double** findCovarianceMatrix(){
 void writeToFile(int fileDesc, double **covarianceMatrix){
     // Size of covariance matrix is 3x3. 
     for(int j = 0; j < COORD_DIMENSIONS; j++){
-        for(int k = 0; k < COORD_DIMENSIONS; k++)
+        for(int k = 0; k < COORD_DIMENSIONS; k++){
+            //Writing as binary.
             while( write(fileDesc, &covarianceMatrix[j][k], sizeof(covarianceMatrix[j][k]) ) == -1 && errno == EINTR ){}
+        }
     }
-    //while( write(fileDesc, "\n", sizeof(char) ) == -1 && errno == EINTR ){}
-
 }
 
 /* Printing child information */
