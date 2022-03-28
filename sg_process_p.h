@@ -16,7 +16,7 @@ void printUsageAndExit();
 void reader(int fileDescriptor, char *argv[], int fileSize);
 
 /* Creates child process and uses waitpid to make sure parent process waits for child process to finish */
-void spawn(char *argv[], char ***buffer);
+void spawn(char *argv[], char **buffer, int i);
 
 /* Collects output from children as binary and stores as double** */
 void collectOutputFromChildren(char *filePath);

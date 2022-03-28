@@ -11,7 +11,6 @@
 extern char **environ;  // Environment variables that will be passed to child process and will come from "sg_process_p.c"
 
 int main(int argc, char *argv[]){
-    
     int i = argv[1][0];       // Special number of this child.
     char *filePath = argv[3]; // Output file path
     int fileDesc;             // Directory stream file descriptor for file writing
@@ -34,8 +33,7 @@ int main(int argc, char *argv[]){
     
     // Printing child info
     printChildInfo(i);
-
-    double **covarianceMatrix = findCovarianceMatrix();
+    double **covarianceMatrix = findCovarianceMatrix(i);
 
     // Writing to file
     writeToFile(fileDesc, covarianceMatrix);
@@ -47,6 +45,7 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+    // Closing file
     if( close(fileDesc) == -1 ){   
         perror("Error while closing the file.");
         exit(EXIT_FAILURE);
@@ -55,7 +54,7 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-double** findCovarianceMatrix(){
+double** findCovarianceMatrix(int i){
     // Formula:        a = A – 1*A*( 1 / n )
     // Covariance matrix = a‘ * a / n
     // Reference: https://stattrek.com/matrix-algebra/covariance-matrix.aspx
@@ -66,7 +65,7 @@ double** findCovarianceMatrix(){
         dataset[j] = (double*)calloc( COORD_DIMENSIONS, sizeof(double*) );
         tempMatrix[j] = (double*)calloc( COORD_DIMENSIONS, sizeof(double*) );
         for(int k = 0; k < COORD_DIMENSIONS; k++){
-            dataset[j][k] = (double)environ[j][k];
+            dataset[j][k] = (double)environ[i][j*COORD_DIMENSIONS+ k];
         }
     }
     
@@ -112,33 +111,33 @@ void writeToFile(int fileDesc, double **covarianceMatrix){
 }
 
 /* Printing child information */
-void printChildInfo(int childNumber){
+void printChildInfo(int i){
     // Because of printf and snprintf are not signal safe, I used write(). 
     // For formatting from int to string I used itaaForAscii(int) function.
 
     // Creating char* variables to free them after.
     char *childNum, *val00, *val01, *val02, *val10, *val11, *val12, *val90, *val91, *val92;
-    
+
     write(STDOUT_FILENO, "Created R_", 11);
-    write(STDOUT_FILENO, childNum = itoaForAscii(childNumber), sizeof( itoaForAscii(childNumber) ) );
+    write(STDOUT_FILENO, childNum = itoaForAscii(i+1), sizeof( itoaForAscii(i+1) ) );
     write(STDOUT_FILENO, " with (", 8);
-    write(STDOUT_FILENO, val00 = itoaForAscii( environ[0][0] ), sizeof( itoaForAscii(environ[0][0]) ) );
+    write(STDOUT_FILENO, val00 = itoaForAscii( environ[i][0] ), sizeof( itoaForAscii(environ[i][0]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val01 = itoaForAscii( environ[0][1] ), sizeof( itoaForAscii(environ[0][1]) ) );
+    write(STDOUT_FILENO, val01 = itoaForAscii( environ[i][1] ), sizeof( itoaForAscii(environ[i][1]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val02 = itoaForAscii( environ[0][2] ), sizeof( itoaForAscii(environ[0][2]) ) );
+    write(STDOUT_FILENO, val02 = itoaForAscii( environ[i][2] ), sizeof( itoaForAscii(environ[i][2]) ) );
     write(STDOUT_FILENO, "), (", 4);
-    write(STDOUT_FILENO, val10 = itoaForAscii( environ[1][0] ), sizeof( itoaForAscii(environ[1][0]) ) );
+    write(STDOUT_FILENO, val10 = itoaForAscii( environ[i][3] ), sizeof( itoaForAscii(environ[i][3]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val11 = itoaForAscii( environ[1][1] ), sizeof( itoaForAscii(environ[1][1]) ) );
+    write(STDOUT_FILENO, val11 = itoaForAscii( environ[i][4] ), sizeof( itoaForAscii(environ[i][4]) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val12 = itoaForAscii( environ[1][2] ), sizeof( itoaForAscii(environ[1][2]) ) );
+    write(STDOUT_FILENO, val12 = itoaForAscii( environ[i][5] ), sizeof( itoaForAscii(environ[i][5]) ) );
     write(STDOUT_FILENO, "), ..., (", 10);
-    write(STDOUT_FILENO, val90 = itoaForAscii( environ[CHILD_SIZE-1][0] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][0] ) ) );
+    write(STDOUT_FILENO, val90 = itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-3] ), sizeof( itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-3] ) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val91 = itoaForAscii( environ[CHILD_SIZE-1][1] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][1] ) ) );
+    write(STDOUT_FILENO, val91 = itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-2] ), sizeof( itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-2] ) ) );
     write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val92 = itoaForAscii( environ[CHILD_SIZE-1][2] ), sizeof( itoaForAscii( environ[CHILD_SIZE-1][2] ) ) );
+    write(STDOUT_FILENO, val92 = itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-1] ), sizeof( itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-1] ) ) );
     write(STDOUT_FILENO, ")\n", 2);
 
     // Freeing

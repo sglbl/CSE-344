@@ -21,8 +21,27 @@ void freeingBuffer(char ***buffer, int size){
     free(buffer);
 }
 
+void spawnChild(char *fileName , int i, char **buffer){
+    char iValue = i;
+    // write(STDOUT_FILENO, "This is the child.\n", 20);
+    char *argList[] = {
+        "./processR",
+        &iValue,
+        "-o",
+        fileName, // name of the output file comes from command line argument
+        NULL
+    };
+    
+    // Calling other c file to handle the child process.
+    execve("./processR", argList, buffer /* environment variables in array */);
+
+    perror("Execve returned so it's an error ");
+    exit(EXIT_FAILURE);
+}
+
 void reader(int fileDescriptor, char *argv[], int fileSize){
-    int readedByte;
+    int readedByte, status;
+    int isFinished = FALSE;
 
     // Cleaning the output file in the case of it's not empty.
     cleanTheOutputFile(argv);
@@ -31,97 +50,55 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
     write(STDOUT_FILENO, argv[4], sg_strlen(argv[4]) );
     write(STDOUT_FILENO, "\n", 1);
 
-    printf("File size is %d\n", fileSize);
-    char ***buffer = (char***)calloc( fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 , sizeof(char**) );
+    char **buffer = (char**)calloc( fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 , sizeof(char*) );
     for(int i=0; /* Continue until reading all file or error situation */ ; i++){     //Name of the children will be R_i
         // Allocating memory for buffer which will store the content of input file
-        buffer[i] = (char**)calloc( CHILD_SIZE + 1, sizeof(char*) );
-        for(int j = 0; j < CHILD_SIZE; j++){
+        buffer[i] = (char*)calloc( CHILD_SIZE * COORD_DIMENSIONS, sizeof(char*) );
+        for(int j = 0; j < CHILD_SIZE * COORD_DIMENSIONS; j++){
+            if( (readedByte = read(fileDescriptor, &buffer[i][j], 1 /* read 1 byte */)) > 0 ){
+                checkIfNonAscii(buffer[i][j]);
+            }
+            else if( readedByte <= 0 && errno == EINTR ){
+                perror("File reading error. : ");
+                exit(EXIT_FAILURE);
+            }
+            else{
+                isFinished = TRUE;
+            }
+        }
 
-            buffer[i][j] = (char*)calloc( COORD_DIMENSIONS, sizeof(char) );
-            for(int k = 0; k < COORD_DIMENSIONS; k++){
-                if( (readedByte = read(fileDescriptor, &buffer[i][j][k], 1 /* read 1 byte */)) > 0 ){
-                    checkIfNonAscii(buffer[i][j][k]);
-                }
-                else if( readedByte <= 0 && errno == EINTR ){
-                    perror("File reading error. : ");
+        // Forking to get ready for creating child process
+        pid_t pidCheckIfChild;  // It's for checking if we are in the child process
+        
+        // Duplicating this process with fork()
+        if( isFinished == FALSE && (pidCheckIfChild = fork()) == 0){ 
+            // pidCheckForChild is 0 so it's child process.
+            spawnChild(argv[4], i, buffer);
+        }
+        else if( pidCheckIfChild < 0 ){
+            perror("Error on fork while creating child process.\n");
+            exit(EXIT_FAILURE);
+        }
+        else if(isFinished == TRUE){
+            printf("We are in parent\n");
+            // Parent process
+            if( waitpid(pidCheckIfChild, &status, 0) == -1 ){ // Wait until all children terminate.
+                if(errno != ECHILD){
+                    perror("Error on wait() command ");
                     exit(EXIT_FAILURE);
                 }
-                else{
-                    write(STDOUT_FILENO, "File reading finished.\n", 24);
-                    printf("i is %d\n", i);
-                    spawn(argv, buffer);    // Spawning children 
-                    freeingBuffer(buffer, fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 1 );
-                    return;
-                }
-                
             }
+            else{
+                write(STDOUT_FILENO, "All children are terminated!\n", 30);
+                collectOutputFromChildren(argv[4]);  // argv[4] is the output path
+                exit(EXIT_SUCCESS);
+            }
+                        
         }
 
     }   //End of for loop
     
     
-}
-
-void spawn(char** argv, char ***buffer){
-    int status;
-    pid_t pidCheckIfChild[5];
-
-    // Checking if we are in the child process for every pid in the array.
-    for(int i = 0; buffer[i] != NULL; i++){
-         // Duplicating this process with fork()
-        if( (pidCheckIfChild[i] = fork()) == 0){    // pidCheckForChild is 0 so it's child process.
-            char iValue = i+1;
-            // write(STDOUT_FILENO, "This is the child.\n", 20);
-            char *argList[] = {
-                "./processR",
-                &iValue,
-                "-o",
-                argv[4], // name of the output file comes from command line argument
-                NULL
-            };
-
-            if( buffer[i+1] == NULL )
-                break;
-                
-            // Calling other c file to handle the child process.
-            execve("./processR", argList, buffer[i] /* environment variables in array */);
-
-            perror("Execve returned so it's an error ");
-            exit(EXIT_FAILURE);
-        }
-        if( pidCheckIfChild[i] < 0){
-            perror("Error on fork while creating child process.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    // Checking if we are in the parent process for every pid in the array.
-    for(int i = 0; buffer[i] != NULL; i++){
-        if( pidCheckIfChild[i] != 0){  // pidCheckForChild is not 0, so it's parent process.
-            // write(STDOUT_FILENO, "This is the parent.\n", 21);
-            
-            if( waitpid(pidCheckIfChild[i], &status, 0) == -1 ){ // Wait until all children terminate.
-                if(errno != ECHILD){
-                    perror("Error on wait() command ");
-                    exit(EXIT_FAILURE);
-                }
-                else{
-                    write(STDOUT_FILENO, "All children are terminated!\n", 30);
-                    exit(EXIT_SUCCESS);
-                }
-            }
-            
-        }
-    }
-    write(STDOUT_FILENO, "Reached EOF, collecting outputs from ", 39);
-    write(STDOUT_FILENO, argv[4], sg_strlen(argv[4]) );
-    write(STDOUT_FILENO, "\n", 1);
-
-    // Collecting outputs from children.
-    collectOutputFromChildren(argv[4]);  // argv[4] is the output path
-
-
 }
 
 void collectOutputFromChildren(char *filePath){
