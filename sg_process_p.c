@@ -4,7 +4,9 @@
 #include <errno.h> // spesific error message
 #include <fcntl.h> // provide control over open files
 #include <unistd.h> // unix standard functions
-#include <sys/wait.h>
+#include <sys/wait.h> // Wait command
+#include <sys/types.h> // Types of signals
+#include <signal.h> // Signal handling
 #include "sg_process_p.h"
 
 void printUsageAndExit(){
@@ -77,11 +79,10 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
             exit(EXIT_FAILURE);
         }
         else if(isFinished == TRUE){
-            printf("We are in parent\n");
             // Parent process
             if( waitpid(pidCheckIfChild, &status, 0) == -1 ){ // Wait until all children terminate.
                 if(errno != ECHILD){
-                    perror("Error on wait() command ");
+                    perror("Error on waitpid() command ");
                     exit(EXIT_FAILURE);
                 }
             }

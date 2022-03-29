@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "sg_process_p.h"
@@ -16,13 +17,13 @@ int main(int argc, char *argv[]){
     int fileDesc;             // Directory stream file descriptor for file reading and writing
 
     if( stat(filePath, &statOfFile) < 0 || argc != 5 ){
-        perror("Error while opening file.\n");
+        perror("Error while opening file. ");
         printUsageAndExit();
     }
 
     // Opening file in read mode
     if( (fileDesc = open(filePath, O_RDONLY, S_IWGRP)) == -1 ){
-        perror("Error while opening file to read.\n");
+        perror("Error while opening file to read. ");
         printUsageAndExit();
     }
 
@@ -31,7 +32,7 @@ int main(int argc, char *argv[]){
 
     // Reading is completed. Closing the file.
     if( close(fileDesc) == -1 ){   
-        perror("Error while closing the file.");
+        perror("Error while closing the file. ");
         exit(EXIT_FAILURE);
     }
 
