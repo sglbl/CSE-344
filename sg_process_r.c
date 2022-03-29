@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <signal.h>
+#include <sys/types.h> // Types of signals
 #include <string.h> // For memset() function for the locking mechanism
 #include <errno.h> // spesific error message
 #include <fcntl.h> // provide control over open files
@@ -8,9 +10,18 @@
 #include "sg_process_r.h"
 #include "sg_matrix.h"
 
+static volatile sig_atomic_t flag = 0; // Flag for signal handling.
 extern char **environ;  // Environment variables that will be passed to child process and will come from "sg_process_p.c"
 
 int main(int argc, char *argv[]){
+
+    // Initializing siggnal action for SIGINT signal.
+    struct sigaction actionForSigInt;
+    memset(&actionForSigInt, 0, sizeof(actionForSigInt)); // Initializing
+    actionForSigInt.sa_handler = sg_signalHandler; // Setting the handler function.
+    actionForSigInt.sa_flags = 0; // No flag is set.
+    sigaction(SIGINT, &actionForSigInt, NULL); // Setting the signal.
+
     int i = argv[1][0];       // Special number of this child.
     char *filePath = argv[3]; // Output file path
     int fileDesc;             // Directory stream file descriptor for file writing
@@ -33,7 +44,7 @@ int main(int argc, char *argv[]){
     
     // Printing child info
     printChildInfo(i);
-    double **covarianceMatrix = findCovarianceMatrix(i);
+    double **covarianceMatrix = findCovarianceMatrix(i, fileDesc, lock);
 
     // Writing to file
     writeToFile(fileDesc, covarianceMatrix);
@@ -55,10 +66,21 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+    sleep(1);
+    if(flag == 1){
+        // write(STDOUT_FILENO, "I am a child and I am killing myself\n", 40);
+        _exit(EXIT_SUCCESS); // Child terminated successfully so we can exit
+    }
     return 0;
 }
 
-double** findCovarianceMatrix(int i){
+// Create a signal handler function
+void sg_signalHandler(int signalNumber){
+    if( signalNumber == SIGINT)
+        flag = 1;   // writing to global. If zero make it 1.
+}
+
+double** findCovarianceMatrix(int i, int fileDesc, struct flock lock){
     // Formula:        a = A – 1*A*( 1 / n )
     // Covariance matrix = a‘ * a / n
     // Reference: https://stattrek.com/matrix-algebra/covariance-matrix.aspx
@@ -68,12 +90,53 @@ double** findCovarianceMatrix(int i){
         dataset[j] = (double*)calloc( COORD_DIMENSIONS, sizeof(double*) );
         for(int k = 0; k < COORD_DIMENSIONS; k++){
             dataset[j][k] = (double)environ[i][j*COORD_DIMENSIONS+ k];
+            if(flag == 1){
+                for(int j = 0; j < CHILD_SIZE; j++)
+                    free(dataset[j]);
+                free(dataset);
+                // Unlocking
+                lock.l_type = F_UNLCK;
+                if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) {
+                    perror("Error while unlocking with fcntl(F_SETLKW)");
+                    exit(EXIT_FAILURE);
+                }
+                // Closing file
+                if( close(fileDesc) == -1 ){   
+                    perror("Error while closing the file.");
+                    exit(EXIT_FAILURE);
+                }
+                // write(STDOUT_FILENO, "I am a child and I am killing myself\n", 40);
+                _exit(EXIT_SUCCESS); // Child terminated successfully so we can exit
+            }
         }
     }
     
     double **tempMatrix = matrixMultiplicationFor10x3(dataset);
     divide10x3MatrixTo10(tempMatrix);
     substract10x3Matrices(dataset, tempMatrix);
+
+    // Interruption signal handling
+    if(flag == 1){
+        for(int j = 0; j < CHILD_SIZE; j++){
+            free(tempMatrix[j]);
+            free(dataset[j]);
+        }
+        free(tempMatrix);   free(dataset);
+        // Unlocking
+        lock.l_type = F_UNLCK;
+        if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) {
+            perror("Error while unlocking with fcntl(F_SETLKW)");
+            exit(EXIT_FAILURE);
+        }
+        // Closing file
+        if( close(fileDesc) == -1 ){   
+            perror("Error while closing the file.");
+            exit(EXIT_FAILURE);
+        }
+        // write(STDOUT_FILENO, "I am a child and I am killing myself\n", 38);
+        _exit(EXIT_SUCCESS); // Child terminated successfully so we can exit
+        
+    }
 
     double **covarianceMatrix;
     covarianceMatrix = multiplyWithItsTranspose(dataset);

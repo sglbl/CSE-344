@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h> // For memset of sigaction
 #include <errno.h> // spesific error message
 #include <fcntl.h> // provide control over open files
 #include <unistd.h> // unix standard functions
@@ -9,12 +10,15 @@
 #include <signal.h> // Signal handling
 #include "sg_process_p.h"
 
+static volatile sig_atomic_t flag = 0; // Flag for signal handling
+
 void printUsageAndExit(){
     write(STDERR_FILENO, "INSTRUCTION: ./processP -i inputFilePath -o outputFilePath\nGoodbye!\n", 69);
     exit(EXIT_FAILURE);
 }
 
 void reader(int fileDescriptor, char *argv[], int fileSize){
+
     int readedByte, status;
     int isFinished = FALSE;
 
@@ -25,6 +29,13 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
     write(STDOUT_FILENO, argv[4], sg_strlen(argv[4]) );
     write(STDOUT_FILENO, "\n", 1);
 
+    // Initializing siggnal action for SIGINT signal.
+    struct sigaction actionForSigInt;
+    memset(&actionForSigInt, 0, sizeof(actionForSigInt)); // Initializing
+    actionForSigInt.sa_handler = sg_signalHandler; // Setting the handler function.
+    actionForSigInt.sa_flags = 0; // No flag is set.
+    sigaction(SIGINT, &actionForSigInt, NULL); // Setting the signal.
+
     char **buffer = (char**)calloc( fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 , sizeof(char*) );
     for(int i=0; /* Continue until reading all file or error situation */ ; i++){     //Name of the children will be R_i
         // Allocating memory for buffer which will store the content of input file
@@ -32,6 +43,9 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
         for(int j = 0; j < CHILD_SIZE * COORD_DIMENSIONS; j++){
             if( (readedByte = read(fileDescriptor, &buffer[i][j], 1 /* read 1 byte */)) > 0 ){
                 checkIfNonAscii(buffer[i][j]);
+                if(flag == 1){
+                    killTheKidsAndParent(fileDescriptor, argv);
+                }
             }
             else if( readedByte <= 0 && errno == EINTR ){
                 perror("File reading error. : ");
@@ -54,21 +68,25 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
             perror("Error on fork while creating child process.\n");
             exit(EXIT_FAILURE);
         }
-        else if(isFinished == TRUE){
-            // Parent process
-            if( waitpid(pidCheckIfChild, &status, 0) == -1 ){ // Wait until all children terminate.
-                if(errno != ECHILD){
-                    perror("Error on waitpid() command ");
-                    exit(EXIT_FAILURE);
+        else{
+            // pidCheckForChild is > 0 so it's parent process.
+            if(flag == 1)
+                killTheKidsAndParent(fileDescriptor, argv);
+            if(isFinished == TRUE){
+                // Parent process
+                if( waitpid(pidCheckIfChild, &status, 0) == -1 ){ // Wait until all children terminate.
+                    if(errno != ECHILD){
+                        perror("Error on waitpid() command ");
+                        exit(EXIT_FAILURE);
+                    }
                 }
-            }
-            else{
-                write(STDOUT_FILENO, "All children are terminated!\n", 30);
-                freeingBuffer(buffer, fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 );
-                collectOutputFromChildren(argv[4]);  // argv[4] is the output path
-                exit(EXIT_SUCCESS);
-            }
-                        
+                else{
+                    write(STDOUT_FILENO, "All children have done their job!\n", 35);
+                    freeingBuffer(buffer, fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 );
+                    collectOutputFromChildren(argv[4]);  // argv[4] is the output path
+                    return;
+                }
+            }            
         }
 
     }   //End of for loop
@@ -93,6 +111,35 @@ void spawnChild(char *fileName , int i, char **buffer){
     perror("Execve returned so it's an error ");
     exit(EXIT_FAILURE);
 }
+
+// Create a signal handler function
+void sg_signalHandler(int signalNumber){
+    if( signalNumber == SIGINT)
+        flag = 1;   // writing to global. If zero make it 1.
+}
+
+void killTheKidsAndParent(int fileDescriptor, char *argv[]){
+    if (kill(getpid(), SIGINT) == -1) {
+        perror("killing child failed.\n");
+        _exit(EXIT_FAILURE);
+    }
+
+    // Reading is completed. Closing the file.
+    if( close(fileDescriptor) == -1 ){   
+        perror("Error while closing the file. ");
+        exit(EXIT_FAILURE);
+    }
+
+    // Removing output file
+    if( remove(argv[4]) == -1 ){
+        perror("Error while removing file.");
+        exit(EXIT_FAILURE);
+    }
+
+    write(STDOUT_FILENO, "Terminating.\n", 14);
+    _exit(EXIT_SUCCESS); // Child terminated successfully so we can exit
+}
+
 
 void freeingBuffer(char **buffer, int size){
     for(int i=0; i < size; i++)
@@ -187,7 +234,6 @@ void calcFrobeniusNorm(double **output, int fileSize){
     dist2 = itoaForAscii(closestDistanceIndex2 + 1);
     closestDistanceStr = basicFtoa(closestDistance);
     
-
     write(STDOUT_FILENO ,"The closest 2 matrices are ", 28);
     write(STDOUT_FILENO , dist1 , sg_strlen(dist1) );
     write(STDOUT_FILENO ," and ", 6);
@@ -247,7 +293,8 @@ char* basicFtoa(double number){
         tempNumber /= 10;
         intDigitCounter++;
     }
-
+    if(intDigitCounter == 0)
+        intDigitCounter = 1; // Because there is at least 1 digit and that's 0.
     doubleDigitCounter = 3;
 
     // Number before '.'  to string.

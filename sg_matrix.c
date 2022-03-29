@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "sg_matrix.h"
+#include "sg_process_r.h"
 
 // #define CHILD_SIZE 10
 // #define COORD_DIMENSIONS 3

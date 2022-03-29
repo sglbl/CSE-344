@@ -18,6 +18,12 @@ void reader(int fileDescriptor, char *argv[], int fileSize);
 /* Creates child process and calls execve for it */
 void spawnChild(char *fileName , int i, char **buffer);
 
+/* Signal handler in case of SIGINT command be catched. */
+void sg_signalHandler(int signalNumber);
+
+/* Killing the child process */
+void killTheKidsAndParent(int fileDescriptor, char *argv[]);
+
 /* Frees buffer */
 void freeingBuffer(char **buffer, int size);
 

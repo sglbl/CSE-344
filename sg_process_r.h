@@ -4,6 +4,7 @@
 	@author Suleyman Golbol
 	@number 1801042656
 */
+#include <fcntl.h>
 #define TRUE 1
 #define FALSE 0
 #define CHILD_SIZE 10
@@ -16,7 +17,13 @@ void printChildInfo(int childNumber);
 /* Converts integer to string(char*) for non-negative ascii values. */
 char* itoaForAscii(int number);
 
-double** findCovarianceMatrix(int i);
+/* Finds covariance matrix and returns */
+double** findCovarianceMatrix(int i, int fileDesc, struct flock lock);
+
+/* Handling signals */
+void sg_signalHandler(int signalNumber);
+
+int sg_strlen(char* string);
 
 void writeToFile(int fileDesc, double **covarianceMatrix);
 
