@@ -14,30 +14,6 @@ void printUsageAndExit(){
     exit(EXIT_FAILURE);
 }
 
-void freeingBuffer(char **buffer, int size){
-    for(int i=0; i < size; i++)
-        free(buffer[i]);
-    free(buffer);
-}
-
-void spawnChild(char *fileName , int i, char **buffer){
-    char iValue = i;
-    // write(STDOUT_FILENO, "This is the child.\n", 20);
-    char *argList[] = {
-        "./processR",
-        &iValue,
-        "-o",
-        fileName, // name of the output file comes from command line argument
-        NULL
-    };
-    
-    // Calling other c file to handle the child process.
-    execve("./processR", argList, buffer /* environment variables in array */);
-
-    perror("Execve returned so it's an error ");
-    exit(EXIT_FAILURE);
-}
-
 void reader(int fileDescriptor, char *argv[], int fileSize){
     int readedByte, status;
     int isFinished = FALSE;
@@ -98,6 +74,30 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
     }   //End of for loop
     
     
+}
+
+void spawnChild(char *fileName , int i, char **buffer){
+    char iValue = i;
+    // write(STDOUT_FILENO, "This is the child.\n", 20);
+    char *argList[] = {
+        "./processR",
+        &iValue,
+        "-o",
+        fileName, // name of the output file comes from command line argument
+        NULL
+    };
+    
+    // Calling other c file to handle the child process.
+    execve("./processR", argList, buffer /* environment variables in array */);
+
+    perror("Execve returned so it's an error ");
+    exit(EXIT_FAILURE);
+}
+
+void freeingBuffer(char **buffer, int size){
+    for(int i=0; i < size; i++)
+        free(buffer[i]);
+    free(buffer);
 }
 
 void collectOutputFromChildren(char *filePath){

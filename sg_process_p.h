@@ -12,11 +12,14 @@
 /* Prints error and instruction about how to run app */
 void printUsageAndExit();
 
-/* Reads file with using fileDescriptor */
+/* Reads file with using fileDescriptor; use fork and use waitpid to make sure parent process waits for child process to finish */
 void reader(int fileDescriptor, char *argv[], int fileSize);
 
-/* Creates child process and uses waitpid to make sure parent process waits for child process to finish */
-void spawn(char *argv[], char **buffer, int i);
+/* Creates child process and calls execve for it */
+void spawnChild(char *fileName , int i, char **buffer);
+
+/* Frees buffer */
+void freeingBuffer(char **buffer, int size);
 
 /* Collects output from children as binary and stores as double** */
 void collectOutputFromChildren(char *filePath);
