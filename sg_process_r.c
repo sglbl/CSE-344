@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <signal.h>
+#include <string.h>
 #include <sys/types.h> // Types of signals
 #include <string.h> // For memset() function for the locking mechanism
 #include <errno.h> // spesific error message
@@ -22,15 +23,15 @@ int main(int argc, char *argv[]){
     actionForSigInt.sa_flags = 0; // No flag is set.
     sigaction(SIGINT, &actionForSigInt, NULL); // Setting the signal.
 
-    int i = argv[1][0];       // Special number of this child.
+    int i = atoi(argv[1]);       // Special number of this child.
     char *filePath = argv[3]; // Output file path
     int fileDesc;             // Directory stream file descriptor for file writing
     struct flock lock;        // Lock structure of the file.
 
     // Opening file in write mode
-    if( (fileDesc = open(filePath, O_WRONLY | O_APPEND, S_IWGRP)) == -1 ){
-        perror("Error while opening file to write.\n");
-        exit(EXIT_FAILURE);
+    if( (fileDesc = open(filePath, O_WRONLY | O_APPEND, S_IWUSR | S_IWGRP | S_IWOTH)) == -1 ){
+        // if flag is 1 then succesfully caaught
+        exit(EXIT_SUCCESS);
     }
 
     // Locking
@@ -38,6 +39,16 @@ int main(int argc, char *argv[]){
     lock.l_type = F_WRLCK;  // F_WRLCK: Field of the structure of type flock for write lock.
     if( fcntl(fileDesc, F_SETLKW, &lock) == -1 ){ // putting write lock on file. 
         // F_SETLKW: If a signal is caught while waiting, then the call is interrupted and (after signal handler returned) returns immediately.
+        if(flag == 1){
+            // No need to unlock because lock is already didn't work.
+            // Closing file
+            if( close(fileDesc) == -1 ){   
+                perror("Error while closing the file.");
+                _exit(EXIT_FAILURE);
+            }
+            // write(STDOUT_FILENO, "I am a child and I am killing myself\n", 40);
+            _exit(EXIT_SUCCESS);
+        }
         perror("Error while locking fcntl(F_SETLK mode).\n");
         exit(EXIT_FAILURE);
     }
@@ -98,12 +109,12 @@ double** findCovarianceMatrix(int i, int fileDesc, struct flock lock){
                 lock.l_type = F_UNLCK;
                 if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) {
                     perror("Error while unlocking with fcntl(F_SETLKW)");
-                    exit(EXIT_FAILURE);
+                    _exit(EXIT_FAILURE);
                 }
                 // Closing file
                 if( close(fileDesc) == -1 ){   
                     perror("Error while closing the file.");
-                    exit(EXIT_FAILURE);
+                    _exit(EXIT_FAILURE);
                 }
                 // write(STDOUT_FILENO, "I am a child and I am killing myself\n", 40);
                 _exit(EXIT_SUCCESS); // Child terminated successfully so we can exit
@@ -126,12 +137,12 @@ double** findCovarianceMatrix(int i, int fileDesc, struct flock lock){
         lock.l_type = F_UNLCK;
         if ( fcntl(fileDesc, F_SETLKW, &lock) == -1) {
             perror("Error while unlocking with fcntl(F_SETLKW)");
-            exit(EXIT_FAILURE);
+            _exit(EXIT_FAILURE);
         }
         // Closing file
         if( close(fileDesc) == -1 ){   
             perror("Error while closing the file.");
-            exit(EXIT_FAILURE);
+            _exit(EXIT_FAILURE);
         }
         // write(STDOUT_FILENO, "I am a child and I am killing myself\n", 38);
         _exit(EXIT_SUCCESS); // Child terminated successfully so we can exit
@@ -153,14 +164,6 @@ double** findCovarianceMatrix(int i, int fileDesc, struct flock lock){
         free(dataset[j]);
     }
     free(dataset);
-
-    // printf("Covariance matrix is \n");
-    // for(int i = 0; i < 3; i++){
-    //     for(int j = 0; j < 3; j++){
-    //         printf("%.3f ", covarianceMatrix[i][j] );
-    //     }
-    //     printf("\n");
-    // }
 
     return covarianceMatrix;
 }
@@ -187,46 +190,8 @@ void printChildInfo(int i){
     // Because of printf and snprintf are not signal safe, I used write(). 
     // For formatting from int to string I used itaaForAscii(int) function.
 
-    // Creating char* variables to free them after.
-    char *childNum, *val00, *val01, *val02, *val10, *val11, *val12, *val90, *val91, *val92;
-    childNum = itoaForAscii(i+1);
-    val00 = itoaForAscii( environ[i][0] );
-    val01 = itoaForAscii( environ[i][1] );
-    val02 = itoaForAscii( environ[i][2] );
-    val10 = itoaForAscii( environ[i][3] );
-    val11 = itoaForAscii( environ[i][4] );
-    val12 = itoaForAscii( environ[i][5] );
-    val90 = itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-3] );
-    val91 = itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-2] );
-    val92 = itoaForAscii( environ[i][CHILD_SIZE*COORD_DIMENSIONS-1] );
-
-    write(STDOUT_FILENO, "Created R_", 11);
-    write(STDOUT_FILENO, childNum, sg_strlen(childNum) );
-    write(STDOUT_FILENO, " with (", 8);
-    write(STDOUT_FILENO, val00, sg_strlen(val00) );
-    write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val01, sg_strlen(val01) );
-    write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val02, sg_strlen(val02) );
-    write(STDOUT_FILENO, "), (", 4);
-    write(STDOUT_FILENO, val10, sg_strlen(val10) );
-    write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val11, sg_strlen(val11) );
-    write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val12, sg_strlen(val12) );
-    write(STDOUT_FILENO, "), ..., (", 10);
-    write(STDOUT_FILENO, val90, sg_strlen(val90) );
-    write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val91, sg_strlen(val91) );
-    write(STDOUT_FILENO, ",", 1);
-    write(STDOUT_FILENO, val92, sg_strlen(val92) );
-    write(STDOUT_FILENO, ")\n", 2);
-
-    // Freeing
-    free(val00); free(val01); free(val02);
-    free(val10); free(val11); free(val12);
-    free(val90); free(val91); free(val92);
-    free(childNum);
+    printf("Created R_%d with (%d,%d,%d), (%d,%d,%d), ..., (%d,%d,%d)\n" ,i+1, environ[i][0], environ[i][1], environ[i][2],
+        environ[i][3], environ[i][4], environ[i][5], environ[i][CHILD_SIZE*COORD_DIMENSIONS-3], environ[i][CHILD_SIZE*COORD_DIMENSIONS-2], environ[i][CHILD_SIZE*COORD_DIMENSIONS-1] );
 
 }
 

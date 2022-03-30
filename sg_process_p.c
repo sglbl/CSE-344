@@ -21,6 +21,7 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
 
     int readedByte, status;
     int isFinished = FALSE;
+    int tempErrno = errno;
 
     // Cleaning the output file in the case of it's not empty.
     cleanTheOutputFile(argv);
@@ -76,6 +77,8 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
                 // Parent process
                 if( waitpid(pidCheckIfChild, &status, 0) == -1 ){ // Wait until all children terminate.
                     if(errno != ECHILD){
+                        if(flag == 1)   
+                            killTheKidsAndParent(fileDescriptor, argv);
                         perror("Error on waitpid() command ");
                         exit(EXIT_FAILURE);
                     }
@@ -84,6 +87,7 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
                     write(STDOUT_FILENO, "All children have done their job!\n", 35);
                     freeingBuffer(buffer, fileSize / (CHILD_SIZE*COORD_DIMENSIONS) + 2 );
                     collectOutputFromChildren(argv[4]);  // argv[4] is the output path
+                    errno = tempErrno;
                     return;
                 }
             }            
@@ -95,11 +99,11 @@ void reader(int fileDescriptor, char *argv[], int fileSize){
 }
 
 void spawnChild(char *fileName , int i, char **buffer){
-    char iValue = i;
+    char *iValue = itoaForAscii(i);
     // write(STDOUT_FILENO, "This is the child.\n", 20);
     char *argList[] = {
         "./processR",
-        &iValue,
+        iValue,
         "-o",
         fileName, // name of the output file comes from command line argument
         NULL
@@ -127,19 +131,18 @@ void killTheKidsAndParent(int fileDescriptor, char *argv[]){
     // Reading is completed. Closing the file.
     if( close(fileDescriptor) == -1 ){   
         perror("Error while closing the file. ");
-        exit(EXIT_FAILURE);
+        _exit(EXIT_FAILURE);
     }
 
     // Removing output file
     if( remove(argv[4]) == -1 ){
         perror("Error while removing file.");
-        exit(EXIT_FAILURE);
+        _exit(EXIT_FAILURE);
     }
 
-    write(STDOUT_FILENO, "Terminating.\n", 14);
+    write(STDOUT_FILENO, "Terminating with handling\n", 27);
     _exit(EXIT_SUCCESS); // Child terminated successfully so we can exit
 }
-
 
 void freeingBuffer(char **buffer, int size){
     for(int i=0; i < size; i++)
@@ -234,11 +237,36 @@ void calcFrobeniusNorm(double **output, int fileSize){
     dist2 = itoaForAscii(closestDistanceIndex2 + 1);
     closestDistanceStr = basicFtoa(closestDistance);
     
-    write(STDOUT_FILENO ,"The closest 2 matrices are ", 28);
+    write(STDOUT_FILENO ,"The closest 2 matrices are matrix", 34);
     write(STDOUT_FILENO , dist1 , sg_strlen(dist1) );
-    write(STDOUT_FILENO ," and ", 6);
+    
+    for(int j = 0; j < 9; j++){
+        write(STDOUT_FILENO , " ", 1);
+        if(j % 3 == 0)  write(STDOUT_FILENO , "\n", 1);
+        char* temp = basicFtoa( fabs(output[closestDistanceIndex1][j]) );
+        if( output[closestDistanceIndex1][j] < 0 ){
+            write(STDOUT_FILENO, "-", 1);
+            write(STDOUT_FILENO, temp, sg_strlen(temp) );
+        }else
+            write(STDOUT_FILENO, temp, sg_strlen(temp) );
+        free(temp);
+    }
+
+    write(STDOUT_FILENO ,"\nand matrix", 12);
     write(STDOUT_FILENO , dist2 , sg_strlen(dist2) );
-    write(STDOUT_FILENO ,", and their distance is ", 25);
+    for(int j = 0; j < 9; j++){
+        write(STDOUT_FILENO , " ", 1);
+        if(j % 3 == 0)  write(STDOUT_FILENO , "\n", 1);
+        char* temp = basicFtoa( fabs(output[closestDistanceIndex2][j]) );
+        if( output[closestDistanceIndex2][j] < 0 ){
+            write(STDOUT_FILENO, "-", 1);
+            write(STDOUT_FILENO, temp, sg_strlen(temp) );
+        }else
+            write(STDOUT_FILENO, temp, sg_strlen(temp) );
+        free(temp);
+    }
+    
+    write(STDOUT_FILENO ,"\nand their distance is ", 24);
     write(STDOUT_FILENO , closestDistanceStr, sg_strlen(closestDistanceStr) );
     write(STDOUT_FILENO ,"\n", 1);
 
