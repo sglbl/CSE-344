@@ -10,7 +10,7 @@
 #define CHEF_NUMBER 6
 
 
-#define TEMP_PID "/tmp/singleton.pid"
+#define TEMP_PID "/tmp/singleton.pid" //çç
 /* A template name for client fifo */
 #define TEMP_CLIENT_FIFO "/tmp/client_fifo"
 /* Client fifo path name space */
@@ -18,9 +18,8 @@
 
 
 typedef struct SharedMemory {
-    int size;
-    // char (*ingredients)[2];
-    char ingredients[][2];
+    int numberOfLines;
+    char ingredients[2];
 } SharedMemory;
 
 #endif

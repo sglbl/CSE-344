@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "sync_named.h": "c"
+        "sync_named.h": "c",
+        "limits": "c"
     }
 }

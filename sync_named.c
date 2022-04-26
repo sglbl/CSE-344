@@ -11,9 +11,9 @@
 #include "prerequisites.h"
 #include "sync_named.h"
 
-// static char (*ingredients)[2]; // Array of ingredients
+SharedMemory *sharedMemory;
 sem_t *wholesaler = 1;
-sem_t *access = 0, *milk = 0, *flour = 0, *walnut = 0, *sugar = 0;  
+sem_t *accessing = 0, *milk = 0, *flour = 0, *walnut = 0, *sugar = 0;  
 
 
 void arrayStorer(char* inputFilePath, char *name){
@@ -39,17 +39,17 @@ void arrayStorer(char* inputFilePath, char *name){
     }
 
     int size = statOfFile.st_size/2;
-    char (*ingredients)[2];
-    ingredients = calloc(size, sizeof(char)); // Allocating memory for ingredients array
+    char (*ingredientsInFile)[2];
+    ingredientsInFile = calloc(size, sizeof(char)); // Allocating memory for ingredients array
     
     // char ingredients[size][2];
     for(int i = 0; i<size; i++){
-        if( read(fileDesc, ingredients[i], 2) == -1 && errno == EINTR )
+        if( read(fileDesc, ingredientsInFile[i], 2) == -1 && errno == EINTR )
             errorAndExit("Error while reading file to array");
         char garbage;
         if( read(fileDesc, &garbage, 1) == 0 ) // Don't add garbage '\n' value to file and if all file is readed, then break.
             break;
-        dprintf(STDOUT_FILENO, "Ingredient %d: %s\n", i, ingredients[i]);
+        dprintf(STDOUT_FILENO, "Ingredient %d: %s\n", i, ingredientsInFile[i]);
     }
     close(fileDesc);
 
@@ -60,21 +60,21 @@ void arrayStorer(char* inputFilePath, char *name){
     if( shmId == -1 ){
         errorAndExit("Error while opening shared memory ");
     }
-    if( ftruncate(shmId, sizeof(ingredients)) == -1 ){
+    if( ftruncate(shmId, sizeof(ingredientsInFile)) == -1 ){
         errorAndExit("Error while truncating shared memory ");
     }
 
     void *sharedMemoryPtr = mmap(NULL, sizeof(SharedMemory), PROT_READ | PROT_WRITE, MAP_SHARED, shmId, 0);
-    SharedMemory *sharedMemory = (SharedMemory*) sharedMemoryPtr;
+    sharedMemory = (SharedMemory*) sharedMemoryPtr;
     if( sharedMemory == MAP_FAILED )
         errorAndExit("Error while mapping shared memory ");
     
     // Writing array to shared memory
-    sharedMemory->size = size;
-    for(int i=0; i<size; i++){
-        sharedMemory->ingredients[i][0] = ingredients[i][0];
-        sharedMemory->ingredients[i][1] = ingredients[i][1];
-    }
+    sharedMemory->numberOfLines = size;
+    // for(int i=0; i<size; i++){
+        sharedMemory->ingredients[0] = ingredientsInFile[0][0];
+        sharedMemory->ingredients[1] = ingredientsInFile[0][1];
+    // }
 
 }
 
@@ -82,8 +82,11 @@ void problemHandler(){
     wholesaler = sem_open("/wholesaler_semaphore", O_CREAT,  0644, 0);
 
 
-    for(int i = 0; i < CHEF_NUMBER; i++){
-        pid_t pid = fork();
+
+    pid_t pid;
+    int i;
+    for(i = 0; i < CHEF_NUMBER; i++){
+        pid = fork();
         if( pid == 0 ){
             /********* CHILD i / CHEF i *********/
             chefHandler(i);
@@ -93,76 +96,139 @@ void problemHandler(){
             /********* PARENT / WHOLESALER *********/
             int status;
             waitpid(pid, &status, WNOHANG/* Don't wait for child process to finish */);
-            
-            while(TRUE){
-                // P( lock );
-                // randNum = rand( 1, 3 ); // Pick a random number from 1-3
-                // if ( randNum == 1 ) {
-                // // Put tobacco on table
-                // // Put paper on table
-                // V( smoker_match );  // Wake up smoker with match
-                // } else if ( randNum == 2 ) {
-                // // Put tobacco on table
-                //     // Put match on table
-                //     V( smoker_paper );  // Wake up smoker with paper
-                // } else {
-                //     // Put match on table
-                //     // Put paper on table
-                //     V( smoker_tobacco ); 
-                // } // Wake up smoker with tobacco
-                // V( lock );
-                // P( agent );  //  Agent sleeps
-             }  // end while loop
-
-
         }
-        else{
+        else{ // pid < 0 
             errorAndExit("Error while creating child process. ");
         }
     }
 
+    if(pid == 0){ 
+        // child
+        
+    }else{ 
+        // parent
+        dprintf(STDOUT_FILENO, "Parent continue\n");
+        wholesalerProcess();
+
+    }
+
 }
 
-void chefHandler(int chefNumber){
+void pusher(){
+    
+}
+
+
+void wholesalerProcess(){
+    
+
+
+}
+
+void chef(int chefNumber){
+    /* 
+    chef0 has an endless supply of milk and flour but lacks walnuts and sugar, chef1 has an endless supply of milk and sugar but lacks flour and walnuts, chef2 has an endless supply of milk and walnuts but lacks sugar and flour, chef3 has an endless supply of sugar and walnuts but lacks milk and flour, chef4 has an endless supply of sugar and flour but lacks milk and walnuts, chef5 has an endless supply of flour and walnuts but lacks sugar and milk. */
     switch(chefNumber){
-        case 0:
-            // has milk and flour but lacks walnuts and sugar,
-            dprintf(STDOUT_FILENO, "Chef 0 is ready to cook.\n");
-            
-
+        case 0: // Waiting for WALNUT and SUGAR [has milk and flour]
+            dprintf(STDOUT_FILENO, "Chef 0 is waiting for walnut and sugar.\n");
             sem_wait(walnut);
-            sem_wait(access);
-            if(access==0){
-                if(generated && generated_item[0] != i && generated_item[1]!=i){
-                    printf("smoker%d completed his smoking\n",i);
-                    table_used = 1;
-                    generated=0;
-                }
+            if( (sharedMemory->ingredients[0] == 'W' && sharedMemory->ingredients[1] == 'S')
+                || (sharedMemory->ingredients[0] == 'S' && sharedMemory->ingredients[1] == 'W') ){
+                dprintf(STDOUT_FILENO, "Chef0 found both needed ingredients from wholesaler.\n");
+                sem_wait(sugar);
+                // TODO
+                sem_post(walnut);
+                sem_post(sugar);
             }
-            sem_post(access);
+            else{ // If 2 ingredients doesn't match
+                sem_post(walnut);
+            }
+
+            break;
+        case 1: // Waiting for FLOUR and WALNIT
+            dprintf(STDOUT_FILENO, "Chef 1 is waiting for milk and sugar.\n");
+            sem_wait(flour);
+            if( (sharedMemory->ingredients[0] == 'M' && sharedMemory->ingredients[1] == 'S')
+                || (sharedMemory->ingredients[0] == 'S' && sharedMemory->ingredients[1] == 'M') ){
+                dprintf(STDOUT_FILENO, "Chef1 found both needed ingredients from wholesaler.\n");
+                sem_wait(walnut);
+                // TODO
+                // handle array
 
 
+                //////
+                sem_post(flour);
+                sem_post(walnut);
+            }
+            else{ // If 2 ingredients doesn't match
+                sem_post(flour);
+            }
             break;
-        case 1:
-            dprintf(STDOUT_FILENO, "Chef 1 is ready to cook.\n");
+        case 2: // Waiting for SUGAR and FLOUR
+            dprintf(STDOUT_FILENO, "Chef 2 is waiting for sugar and flour\n");
+            sem_wait(flour);
+            if( (sharedMemory->ingredients[0] == 'M' && sharedMemory->ingredients[1] == 'S')
+                || (sharedMemory->ingredients[0] == 'S' && sharedMemory->ingredients[1] == 'M') ){
+                dprintf(STDOUT_FILENO, "Chef2 found both needed ingredients from wholesaler.\n");
+                sem_wait(sugar); 
+                // TODO
+                sem_post(flour);
+                sem_post(sugar);
+            }
+            else{ // If 2 ingredients doesn't match
+                sem_post(flour);
+            }
             break;
-        case 2:
-            dprintf(STDOUT_FILENO, "Chef 2 is ready to cook.\n");
+        case 3: // Waiting for MILK and FLOUR
+            dprintf(STDOUT_FILENO, "Chef 3 is waiting for milk and flour\n");
+            sem_wait(milk);
+            if( (sharedMemory->ingredients[0] == 'M' && sharedMemory->ingredients[1] == 'S')
+                || (sharedMemory->ingredients[0] == 'S' && sharedMemory->ingredients[1] == 'M') ){
+                dprintf(STDOUT_FILENO, "Chef3 found both needed ingredients from wholesaler.\n");
+                sem_wait(flour);
+                // TODO
+                sem_post(milk);
+                sem_post(flour);
+            }
+            else{ // If 2 ingredients doesn't match
+                sem_post(milk);
+            }
             break;
-        case 3:
-            dprintf(STDOUT_FILENO, "Chef 2 is ready to cook.\n");
+        case 4: // Waiting for  MILK and WALNUTS
+            dprintf(STDOUT_FILENO, "Chef 4 is waiting for milk and walnuts\n");
+            sem_wait(milk);
+            if( (sharedMemory->ingredients[0] == 'M' && sharedMemory->ingredients[1] == 'S')
+                || (sharedMemory->ingredients[0] == 'S' && sharedMemory->ingredients[1] == 'M') ){
+                dprintf(STDOUT_FILENO, "Chef4 found both needed ingredients from wholesaler.\n");
+                sem_wait(walnut);
+                // TODO
+                sem_post(milk);
+                sem_post(walnut);
+            }
+            else{ // If 2 ingredients doesn't match
+                sem_post(milk);
+            }
             break;
-        case 4:
-            dprintf(STDOUT_FILENO, "Chef 2 is ready to cook.\n");
-            break;
-        case 5:
-            dprintf(STDOUT_FILENO, "Chef 2 is ready to cook.\n");
+        case 5: // Waiting for SUGAR and MILK
+            dprintf(STDOUT_FILENO, "Chef 5 is waiting for sugar and milk\n");
+            sem_wait(milk);
+            if( (sharedMemory->ingredients[0] == 'M' && sharedMemory->ingredients[1] == 'S')
+                || (sharedMemory->ingredients[0] == 'S' && sharedMemory->ingredients[1] == 'M') ){
+                dprintf(STDOUT_FILENO, "Chef5 found both needed ingredients from wholesaler.\n");
+                sem_wait(sugar);
+                // TODO
+                sem_post(milk);
+                sem_post(sugar);
+            }
+            else{ // If 2 ingredients doesn't match
+                sem_post(milk);
+            }
             break;
         default:
             errorAndExit("Chef number is not valid. ");
     }
 
-    // sem_wait(wholesalerSem);    
+
 }
 
 
@@ -172,15 +238,15 @@ void chefHandler(int chefNumber){
 //             // has milk and flour but lacks walnuts and sugar,
 //             dprintf(STDOUT_FILENO, "Chef 0 is ready to cook.\n");
 //             sem_wait(walnut);
-//             sem_wait(access);
-//             if(access==0){
+//             sem_wait(accessing);
+//             if(accessing==0){
 //                 if(generated && generated_item[0] != i && generated_item[1]!=i){
 //                     printf("smoker%d completed his smoking\n",i);
 //                     table_used = 1;
 //                     generated=0;
 //                 }
 //             }
-//             sem_post(access);
+//             sem_post(accessing);
 
 //             break;
 //         case 'F':
@@ -197,7 +263,7 @@ void chefHandler(int chefNumber){
 //     }
 
     // sem_wait(wholesalerSem);    
-}
+// }
 
 void errorAndExit(char *errorMessage){
     perror(errorMessage);

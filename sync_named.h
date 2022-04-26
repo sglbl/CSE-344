@@ -11,7 +11,9 @@ void arrayStorer(char* dataFilePath, char *rowSize);
 
 void problemHandler();
 
-void chefHandler(int chefNumber);
+void chef(int chefNumber);
+
+void wholesalerProcess();
 
 
 #endif
