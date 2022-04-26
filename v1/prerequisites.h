@@ -7,8 +7,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#define NUMBER_OF_CHEFS 6
-#define NUMBER_OF_INGREDIENTS 4
+#define CHEF_NUMBER 6
 
 
 #define TEMP_PID "/tmp/singleton.pid" //çç

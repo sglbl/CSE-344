@@ -14,7 +14,6 @@
 SharedMemory *sharedMemory;
 sem_t *wholesaler = 1;
 sem_t *accessing = 0, *milk = 0, *flour = 0, *walnut = 0, *sugar = 0;  
-sem_t *signalToChef[NUMBER_OF_CHEFS] = { 0 };
 
 
 void arrayStorer(char* inputFilePath, char *name){
@@ -81,12 +80,12 @@ void arrayStorer(char* inputFilePath, char *name){
 
 void problemHandler(){   
     wholesaler = sem_open("/wholesaler_semaphore", O_CREAT,  0644, 0);
-    
+
 
 
     pid_t pid;
     int i;
-    for(i = 0; i < NUMBER_OF_CHEFS; i++){
+    for(i = 0; i < CHEF_NUMBER; i++){
         pid = fork();
         if( pid == 0 ){
             /********* CHILD i / CHEF i *********/
@@ -117,8 +116,6 @@ void problemHandler(){
 
 void pusher(){
     
-
-
 }
 
 
