@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "sync_named.h": "c",
-        "limits": "c"
+        "limits": "c",
+        "prerequisites.h": "c"
     }
 }
