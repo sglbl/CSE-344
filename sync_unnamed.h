@@ -17,6 +17,8 @@ typedef struct SharedMemory {
     sem_t accessing, milk, flour, walnut, sugar;  
     sem_t milkSignal, flourSignal, walnutSignal, sugarSignal;  
     sem_t wholesaler;
+    sem_t dessertPrepared;
+    // int enterNewLine;
     int isMilk, isFlour, isWalnut, isSugar;
     char ingredients[2];
 } SharedMemory;
