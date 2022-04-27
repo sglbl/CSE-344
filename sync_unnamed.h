@@ -14,11 +14,10 @@
 typedef struct SharedMemory {
     int numberOfLines;
     sem_t signalToChef[NUMBER_OF_CHEFS];
-    sem_t accessing, milk, flour, walnut, sugar;  
-    sem_t milkSignal, flourSignal, walnutSignal, sugarSignal;  
+    sem_t accessing, milk, flour, walnut, sugar;
+    sem_t walnutAndFlourSignal, walnutAndSugarSignal, walnutAndMilkSignal, milkAndSugarSignal, milkAndFlourSignal, flourAndSugarSignal;
     sem_t wholesaler;
     sem_t dessertPrepared;
-    // int enterNewLine;
     int isMilk, isFlour, isWalnut, isSugar;
     char ingredients[2];
 } SharedMemory;
