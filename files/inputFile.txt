@@ -3,3 +3,5 @@ FM
 WS
 SF
 WM
+MS
+SF
