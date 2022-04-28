@@ -44,14 +44,12 @@ void arrayStorer(char* inputFilePath){
     for(int i = 0; i<size; i++){
         if( read(fileDesc, ingredientsInFile[i], 2) == -1 && errno == EINTR )
             errorAndExit("Error while reading file to array");
-        dprintf(STDOUT_FILENO, "Ingredient %d: %s\n", i, ingredientsInFile[i]);
+        // dprintf(STDOUT_FILENO, "Ingredient %d: %s\n", i, ingredientsInFile[i]);
         char garbage;
         if( read(fileDesc, &garbage, 1) == 0 ) // Don't add garbage '\n' value to file and if all file is readed, then break.
             break;
     }
     close(fileDesc);
-
-    dprintf(STDOUT_FILENO,"Size of statOfFile.st_size is %ld\n", statOfFile.st_size);
     
     // Initialization of shared memory
     int shmId = shm_open("sharedMemory", O_CREAT | O_RDWR, 0666);
@@ -82,8 +80,8 @@ void semaphoreInitializer(){
 
     if( sem_init(&sharedMemory->accessing, 1 /* Pshare */, 1) < 0 )
         errorAndExit("Semaphore initialize error ");
-    if( sem_init(&sharedMemory->wholesaler, 1 /* Pshare */, 1) < 0 )
-        errorAndExit("Semaphore initialize error ");
+    // if( sem_init(&sharedMemory->wholesaler, 1 /* Pshare */, 1) < 0 )
+    //     errorAndExit("Semaphore initialize error ");
 
     if( sem_init(&sharedMemory->milk, 1 /* Pshare */, 0) < 0 )
         errorAndExit("Semaphore initialize error ");
@@ -164,13 +162,9 @@ void problemHandler(){
 
 void wholesalerProcess(){
     int foundFLag1 = FALSE, foundFLag2 = FALSE;
-    sem_wait(&sharedMemory->wholesaler);
+    // sem_wait(&sharedMemory->wholesaler);
     switch(sharedMemory->ingredients[0]){
-        case 'M':   sem_post(&sharedMemory->milk);   
-        int *val;
-        sem_getvalue(&sharedMemory->milk, val);
-        printf("Val2 is %d\n", *val);
-        foundFLag1 = TRUE; break;
+        case 'M':   sem_post(&sharedMemory->milk);   foundFLag1 = TRUE; break;
         case 'W':   sem_post(&sharedMemory->walnut); foundFLag1 = TRUE; break;
         case 'F':   sem_post(&sharedMemory->flour);  foundFLag1 = TRUE; break;
         case 'S':   sem_post(&sharedMemory->sugar);  foundFLag1 = TRUE; break;
@@ -181,17 +175,22 @@ void wholesalerProcess(){
         case 'F':   sem_post(&sharedMemory->flour);  foundFLag2 = TRUE; break;
         case 'S':   sem_post(&sharedMemory->sugar);  foundFLag2 = TRUE; break;
     }   
-    printf("Posted\n");
+    // printf("Posted\n");
     if(foundFLag1 == TRUE && foundFLag2 == TRUE){
         sharedMemory->ingredients[0] = ingredientsInFile[lineNumber][0];
         sharedMemory->ingredients[1] = ingredientsInFile[lineNumber][1];
-        lineNumber++;
-        dprintf(STDOUT_FILENO, "Second line\n");
     }
     // If a dessert is prepared, then let program continue with next line.
-    printf("-----------\n");
-    // exit(EXIT_SUCCESS);
+    dprintf(STDOUT_FILENO, "The wholesaler (pid %d) delivers %s and %s.\n", getpid(), stringConverter(sharedMemory->ingredients[0]), stringConverter(sharedMemory->ingredients[1]) );
+    dprintf(STDOUT_FILENO, "The wholesaler (pid %d) is waiting for the dessert.\n", getpid());
     sem_wait(&sharedMemory->dessertPrepared);
+    dprintf(STDOUT_FILENO, "The wholesaler (pid %d) has obtained the dessert and left.\n", getpid());
+    // dprintf(STDOUT_FILENO, "--Entering line number %d--\n", lineNumber);
+    if(lineNumber == sharedMemory->numberOfLines){
+        dprintf(STDOUT_FILENO, "The wholesaler (pid %d) is done (Total desserts: %d)\n", getpid(), totalDessertNumberFinder());
+        exit(EXIT_SUCCESS);
+    }
+    lineNumber++;
 }
 
 void pusherMilk(){ //Wakes up when there is milk by wholesaler
@@ -283,100 +282,6 @@ void pusherWalnut(){
 
 }
 
-
-// void pusherMilk(){ //Wakes up when there is milk by wholesaler
-//     dprintf(STDOUT_FILENO,"Waiting for milk pusher\n");
-//     int *val;
-//     sem_getvalue(&sharedMemory->milk, val);
-//     printf("Val is %d\n", *val);
-//     sem_wait(&sharedMemory->milk);
-//     sem_wait(&sharedMemory->accessing);
-//     dprintf(STDOUT_FILENO,"!!! MILK ENTRANCE !!!\n");
-//     if(sharedMemory->isWalnut == 1 && sharedMemory->isFlour == 1){
-//         sem_post(&sharedMemory->sugarSignal);
-//     }
-//     else if(sharedMemory->isWalnut == 1 && sharedMemory->isSugar == 1){
-//         sem_post(&sharedMemory->flourSignal);
-//     }
-//     else if(sharedMemory->isFlour == 1 && sharedMemory->isSugar == 1){
-//         sem_post(&sharedMemory->walnutSignal);
-//     }
-//     else{
-//         dprintf(STDOUT_FILENO, "Milk is 1\n");
-//         sharedMemory->isMilk = 1;
-//     }
-//     sem_post(&sharedMemory->accessing);
-// }
-
-// void pusherFlour(){     //Wakes up when there is flour by wholesaler
-//     sem_wait(&sharedMemory->flour);
-//     sem_wait(&sharedMemory->accessing);
-//     dprintf(STDOUT_FILENO,"!!! FLOUR ENTRANCE !!!\n");
-//     if(sharedMemory->isWalnut == 1 && sharedMemory->isMilk == 1){
-//         sem_post(&sharedMemory->sugarSignal);
-//         dprintf(STDOUT_FILENO, "Walnut and flour is 1\n");
-//     }
-//     else if(sharedMemory->isWalnut == 1 && sharedMemory->isSugar == 1){
-//         sem_post(&sharedMemory->milkSignal);
-//         dprintf(STDOUT_FILENO, "Walnut and sugar is 1\n");
-//     }
-//     else if(sharedMemory->isMilk == 1 && sharedMemory->isSugar == 1){
-//         dprintf(STDOUT_FILENO, "!!!!Signaling walnut from flour [1OUR PURPOSE]!!!!\n");
-//         sem_post(&sharedMemory->walnutSignal);
-//     }
-//     else{
-//         dprintf(STDOUT_FILENO, "Flour is 1\n");
-//         sharedMemory->isFlour = 1;
-//     }
-//     sem_post(&sharedMemory->accessing);
-// }
-
-// void pusherSugar(){       //Wakes up when there is sugar by wholesaler
-//     sem_wait(&sharedMemory->sugar);
-//     dprintf(STDOUT_FILENO,"!!! SUGAR ENTRANCE !!!\n");
-//     sem_wait(&sharedMemory->accessing);
-//     int *val;
-//     sem_getvalue(&sharedMemory->milk, val);
-//     printf("Val3 is %d\n", *val);
-//     if(sharedMemory->isWalnut == 1 && sharedMemory->isFlour == 1){
-//         sem_post(&sharedMemory->milkSignal);
-//     }
-//     else if(sharedMemory->isWalnut == 1 && sharedMemory->isMilk == 1){
-//         sem_post(&sharedMemory->flourSignal);
-//     }
-//     else if(sharedMemory->isFlour == 1 && sharedMemory->isMilk == 1){
-//         sem_post(&sharedMemory->walnutSignal);
-//     }
-//     else{
-//         dprintf(STDOUT_FILENO, "Sugar is 1\n");
-//         sharedMemory->isSugar = 1;
-//     }
-//     sem_post(&sharedMemory->accessing);
-// }
-
-// void pusherWalnut(){    //Wakes up when there is walnut by wholesaler
-//     dprintf(STDOUT_FILENO, "Walnut pusher is waiting\n");
-//     sem_wait(&sharedMemory->walnut);
-//     dprintf(STDOUT_FILENO,"!!! WALNUT ENTRANCE !!!\n");
-//     sem_wait(&sharedMemory->accessing);
-//     dprintf(STDOUT_FILENO,"!!! WALNUT PASSED ACCESS !!!\n");
-//     if(sharedMemory->isMilk == 1 && sharedMemory->isFlour == 1){
-//         sem_post(&sharedMemory->sugarSignal);
-//     }
-//     else if(sharedMemory->isMilk == 1 && sharedMemory->isSugar == 1){
-//         dprintf(STDOUT_FILENO, "!!!!Signaling flour from walnut [2OUR PURPOSE]!!!!\n");
-//         sem_post(&sharedMemory->flourSignal);
-//     }
-//     else if(sharedMemory->isFlour == 1 && sharedMemory->isSugar == 1){
-//         sem_post(&sharedMemory->milkSignal);
-//     }
-//     else{
-//         dprintf(STDOUT_FILENO, "isWalnut is 1\n");
-//         sharedMemory->isWalnut = 1;
-//     }
-//     sem_post(&sharedMemory->accessing);
-// }
-
 void chef(int chefNumber){
     /* 
     chef0 has an endless supply of milk and flour but lacks walnuts and sugar, 
@@ -387,43 +292,53 @@ void chef(int chefNumber){
     chef5 has an endless supply of flour and walnuts but lacks sugar and milk. */
     switch(chefNumber){
         case 0: // Waiting for WALNUT and SUGAR [has milk and flour]
-            dprintf(STDOUT_FILENO, "Chef 0 is waiting for walnut and sugar. and pid is %d\n", getpid());
-            // write the one which has
+            dprintf(STDOUT_FILENO, "Chef0 (pid %d) is waiting for walnut and sugar.\n", getpid());
             sem_wait(&sharedMemory->milkAndFlourSignal);
-            dprintf(STDOUT_FILENO, "Chef1 found both needed ingredients from wholesaler.\n");
-            sem_post(&sharedMemory->wholesaler);
+            dprintf(STDOUT_FILENO, "Chef0 (pid %d) has taken the walnut\nChef0 (pid %d has taken the sugar.\n", getpid(), getpid());
+            dprintf(STDOUT_FILENO, "Chef0 (pid %d) is preparing the dessert.\n", getpid());
+            sem_post(&sharedMemory->dessertPrepared);
+            dprintf(STDOUT_FILENO, "Chef0 (pid %d) has delivered the dessert.\n", getpid());
             break;
         case 1: // Waiting for FLOUR and WALNIT [has milk and sugar]
-            dprintf(STDOUT_FILENO, "Chef 1 is waiting for milk and sugar.\n");
+            dprintf(STDOUT_FILENO, "Chef1 (pid %d) is waiting for milk and sugar.\n", getpid());
             sem_wait(&sharedMemory->milkAndSugarSignal);
-            dprintf(STDOUT_FILENO, "Chef1 found both needed ingredients from wholesaler.\n");
-            sem_post(&sharedMemory->wholesaler);
+            dprintf(STDOUT_FILENO, "Chef1 (pid %d) has taken the walnut\nChef0 (pid %d has taken the flour.\n", getpid(), getpid());
+            dprintf(STDOUT_FILENO, "Chef1 (pid %d) is preparing the dessert.\n", getpid());
+            sem_post(&sharedMemory->dessertPrepared);
+            dprintf(STDOUT_FILENO, "Chef1 (pid %d) has delivered the dessert.\n", getpid());
             break;
         case 2: // Waiting for SUGAR and FLOUR [has milk and walnuts]
-            dprintf(STDOUT_FILENO, "Chef 2 is waiting for sugar and flour\n");
+            dprintf(STDOUT_FILENO, "Chef2 (pid %d) is waiting for sugar and flour.\n", getpid());
             sem_wait(&sharedMemory->walnutAndMilkSignal);
-            dprintf(STDOUT_FILENO, "Chef2 found both needed ingredients from wholesaler.\n");    
-            sem_post(&sharedMemory->wholesaler);
+            dprintf(STDOUT_FILENO, "Chef2 (pid %d) has taken the flour\nChef2 (pid %d) has taken the sugar\n", getpid(), getpid());
+            dprintf(STDOUT_FILENO, "Chef2 (pid %d) is preparing the dessert.\n", getpid());
+            sem_post(&sharedMemory->dessertPrepared);
+            dprintf(STDOUT_FILENO, "Chef2 (pid %d) has delivered the dessert.\n", getpid());
             break;
         case 3: // Waiting for MILK and FLOUR [has sugar and walnuts]
-            dprintf(STDOUT_FILENO, "Chef 3 is waiting for milk and flour\n");
+            dprintf(STDOUT_FILENO, "Chef3 (pid %d) is waiting for milk and flour.\n", getpid());
             sem_wait(&sharedMemory->walnutAndSugarSignal);
-            dprintf(STDOUT_FILENO, "Chef3 found both needed ingredients from wholesaler.\n");
-            sem_post(&sharedMemory->wholesaler);
+            dprintf(STDOUT_FILENO, "Chef3 (pid %d) has taken the flour\nChef3 (pid %d) has taken the milk\n",  getpid(),  getpid());
+            dprintf(STDOUT_FILENO, "Chef3 (pid %d) is preparing the dessert.\n", getpid());
+            sem_post(&sharedMemory->dessertPrepared);
+            dprintf(STDOUT_FILENO, "Chef3 (pid %d) has delivered the dessert.\n", getpid());
             break;
         case 4: // Waiting for  MILK and WALNUTS [has sugar and flour]
-            dprintf(STDOUT_FILENO, "Chef 4 is waiting for milk and walnuts\n");
+            dprintf(STDOUT_FILENO, "Chef4 (pid %d) is waiting for milk and walnuts.\n", getpid());
             sem_wait(&sharedMemory->flourAndSugarSignal);
-            dprintf(STDOUT_FILENO, "Chef4 found both needed ingredients from wholesaler.\n");
-            sem_post(&sharedMemory->wholesaler);
+            dprintf(STDOUT_FILENO, "Chef4 (pid %d) has taken the milk\nChef4 (pid %d) has taken the walnuts\n", getpid(),  getpid());
+            dprintf(STDOUT_FILENO, "Chef4 (pid %d) is preparing the dessert.\n", getpid());
+            sem_post(&sharedMemory->dessertPrepared);
+            dprintf(STDOUT_FILENO, "Chef4 (pid %d) has delivered the dessert.\n", getpid());
             break;
         case 5: // Waiting for SUGAR and MILK [has flour and walnuts]
-            dprintf(STDOUT_FILENO, "Chef 5 is waiting for sugar and milk\n");
+            dprintf(STDOUT_FILENO, "Chef5 (pid %d) is waiting for sugar and milk.\n", getpid());
             sem_wait(&sharedMemory->walnutAndFlourSignal);
-            dprintf(STDOUT_FILENO, "Chef5 found both needed ingredients from wholesaler.\n"); //çç sometimes work
+            dprintf(STDOUT_FILENO, "Chef5 (pid %d) has taken the milk\nChef5 (pid %d) has taken the sugar\n", getpid(), getpid());
+            dprintf(STDOUT_FILENO, "Chef5 (pid %d) is preparing the dessert.\n", getpid());
             // Dessert is prepared so let program continue with next line of file
-            sem_post(&sharedMemory->wholesaler);
             sem_post(&sharedMemory->dessertPrepared);
+            dprintf(STDOUT_FILENO, "Chef2 (pid %d) has delivered the dessert.\n", getpid());
             break;
         default:
             errorAndExit("Chef number is not valid. ");
@@ -433,4 +348,17 @@ void chef(int chefNumber){
 void errorAndExit(char *errorMessage){
     perror(errorMessage);
     exit(EXIT_FAILURE);
+}
+
+char *stringConverter(char character){
+    if(character == 'W') return "walnuts";
+    if(character == 'S') return "sugar";
+    if(character == 'M') return "milk";
+    if(character == 'F') return "flour";
+    else return "error";
+}
+
+int totalDessertNumberFinder(){
+    //çç
+    
 }

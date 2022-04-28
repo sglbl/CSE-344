@@ -16,7 +16,7 @@ typedef struct SharedMemory {
     sem_t signalToChef[NUMBER_OF_CHEFS];
     sem_t accessing, milk, flour, walnut, sugar;
     sem_t walnutAndFlourSignal, walnutAndSugarSignal, walnutAndMilkSignal, milkAndSugarSignal, milkAndFlourSignal, flourAndSugarSignal;
-    sem_t wholesaler;
+    // sem_t wholesaler;
     sem_t dessertPrepared;
     int isMilk, isFlour, isWalnut, isSugar;
     char ingredients[2];
@@ -32,9 +32,16 @@ void chef(int chefNumber);
 
 void wholesalerProcess();
 
+int totalDessertNumberFinder();
+
+char *stringConverter(char character);
+
 void pusherMilk();
+
 void pusherFlour();
+
 void pusherWalnut();
+
 void pusherSugar();
 
 
