@@ -16,21 +16,34 @@ typedef struct SharedMemory {
     sem_t signalToChef[NUMBER_OF_CHEFS];
     sem_t accessing, milk, flour, walnut, sugar;
     sem_t walnutAndFlourSignal, walnutAndSugarSignal, walnutAndMilkSignal, milkAndSugarSignal, milkAndFlourSignal, flourAndSugarSignal;
-    // sem_t wholesaler;
     sem_t dessertPrepared;
     int isMilk, isFlour, isWalnut, isSugar;
     char ingredients[2];
+    int totalNumberOfDesserts;
 } SharedMemory;
 
+/* 
+    chef0 has an endless supply of milk and flour but lacks walnuts and sugar, 
+    chef1 has an endless supply of milk and sugar but lacks flour and walnuts, 
+    chef2 has an endless supply of milk and walnuts but lacks sugar and flour, 
+    chef3 has an endless supply of sugar and walnuts but lacks milk and flour, 
+    chef4 has an endless supply of sugar and flour but lacks milk and walnuts, 
+    chef5 has an endless supply of flour and walnuts but lacks sugar and milk. 
+*/
+
 void errorAndExit(char *errorMessage);
+
+void signalHandlerInitializer();
+
+void sg_signalHandler(int signalNumber);
 
 void arrayStorer(char* dataFilePath);
 
 void problemHandler();
 
-void chef(int chefNumber);
+int chef(int chefNumber);
 
-void wholesalerProcess();
+void wholesalerProcess(pid_t pidsFromFork[]);
 
 int totalDessertNumberFinder();
 
