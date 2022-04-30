@@ -64,7 +64,6 @@ void arrayStorer(char* inputFilePath){
     for(int i = 0; i<size; i++){
         if( read(fileDesc, ingredientsInFile[i], 2) == -1 && errno == EINTR )
             errorAndExit("Error while reading file to array");
-        // dprintf(STDOUT_FILENO, "Ingredient %d: %s\n", i, ingredientsInFile[i]);
         char garbage;
         if( read(fileDesc, &garbage, 1) == 0 ) // Don't add garbage '\n' value to file and if all file is readed, then break.
             break;
@@ -89,7 +88,6 @@ void arrayStorer(char* inputFilePath){
     sharedMemory->numberOfLines = size;
     sharedMemory->ingredients[0] = ingredientsInFile[0][0];
     sharedMemory->ingredients[1] = ingredientsInFile[0][1];
-    sharedMemory->totalNumberOfDesserts = 0;
     lineNumber = 1;
 }
 
@@ -127,6 +125,8 @@ void semaphoreInitializer(){
         errorAndExit("Semaphore initialize error ");
     if( sem_init(&sharedMemory->dessertPrepared, 1 /* Pshare */, 0) < 0 )
         errorAndExit("Semaphore initialize error ");
+    if( sem_init(&sharedMemory->childReturned, 1 /* Pshare */, 0) < 0 )
+        errorAndExit("Semaphore initialize error ");
 
 }
 
@@ -151,7 +151,7 @@ void problemHandler(){
         else if( pid > 0 ){
             /********* PARENT *********/
             pidsFromFork[i] = pid;
-            dprintf(STDOUT_FILENO, "Pusher id is %d\n", pid);
+            // dprintf(STDOUT_FILENO, "Pusher id is %d\n", pid);
             int status;
             waitpid(pid, &status, WNOHANG/* Don't wait for child process to finish */);
         }
@@ -165,23 +165,12 @@ void problemHandler(){
         pid = fork();
         if( pid == 0 ){
             /********* CHILD i / CHEF i *********/
-            sharedMemory->totalNumberOfDesserts += chef(i); //çç
-            // WEXITSTATUS(status);
-            return;
+            chef(i);
+            return; // If chef(child) is done, return from the child.
         }
         else if( pid > 0 ){
             /********* PARENT / WHOLESALER *********/
             pidsFromFork[i + NUMBER_OF_INGREDIENTS] = pid;
-            int status;
-            int waitpidReturnVal = waitpid(0, &status, WNOHANG | WUNTRACED /* Don't wait for child process to finish */);
-            if(waitpidReturnVal  < 0)   errorAndExit("Error while using waitpid\n");
-            if( WIFEXITED(status) ){
-                printf("+-+-+Child process %d exited with status %d\n", pid, WEXITSTATUS(status));
-            }
-            if(waitpidReturnVal == 0)   dprintf(STDOUT_FILENO, "Child is still runnning\n");
-            if(waitpidReturnVal  > 0)   dprintf(STDOUT_FILENO, "||| Child is finished and status is %d\n", status);
-
-            printf("------Status of pid %d is %d\n", pid, status);
         }
         else{ // pid < 0 
             errorAndExit("Error while creating child process for chefs. ");
@@ -191,8 +180,22 @@ void problemHandler(){
     // Do wholesaler job.
     if(pid > 0){  // parent
         wholesalerProcess(pidsFromFork);
-        sleep(1); //çç
-        dprintf(STDOUT_FILENO, "The wholesaler (pid %d) is done (Total desserts: %d)\n", getpid(), sharedMemory->totalNumberOfDesserts);
+        // Collecting chef's return values 
+        int totalNumberOfDesserts = 0;
+
+        for(int i =0; i < NUMBER_OF_CHEFS; i++){
+            // dprintf(STDOUT_FILENO, "Pid %d\n", pidsFromFork[i]);
+            int status;
+            int waitpidReturnVal = waitpid(pidsFromFork[NUMBER_OF_INGREDIENTS + i], &status, 0/* Don't wait for child process to finish */);
+            if(waitpidReturnVal  < 0)   
+                errorAndExit("Error while using waitpid\n");
+            if( waitpidReturnVal == pidsFromFork[NUMBER_OF_INGREDIENTS+i] && WIFEXITED(status) ){
+                // printf("+-+-Child process %d exited with status %d, WEXITSTATUS %d, status >> 8 is %d, status&0xff %d\n", 
+                //                     pid, status, WEXITSTATUS(status), status >> 8, status & 0xFF);
+                totalNumberOfDesserts += WEXITSTATUS(status); //  This macro evaluates to the low-order 8 bits of the status. (Same with status >> 8)
+            }
+        }
+        dprintf(STDOUT_FILENO, "\nThe wholesaler (pid %d) is done (Total desserts: %d)\n", getpid(), totalNumberOfDesserts);
     }
 
 }
@@ -231,11 +234,11 @@ void wholesalerProcess(pid_t pidsFromFork[]){
             if( signalFlag == 1 ){
                 dprintf(STDOUT_FILENO, "\n\n----Signal flag is 1\n");
             }
-            // Killing the pusher processes with SIGKILL
+            // Killing the PUSHER processes with SIGKILL
             for(int i = 0; i < NUMBER_OF_INGREDIENTS; i++)
                 if( kill(pidsFromFork[i], SIGKILL) == -1 )
                     errorAndExit("Killing child failed.\n");
-            // (Gracefully) Killing the chef processes with SIGINT
+            // (Gracefully) Killing the CHEF processes with SIGINT
             for(int i = 0; i < NUMBER_OF_CHEFS; i++)
                 if( kill(pidsFromFork[i + NUMBER_OF_INGREDIENTS], SIGINT) == -1 )
                     errorAndExit("Killing child failed.\n");
@@ -264,7 +267,7 @@ int chef(int chefNumber){
                 dprintf(STDOUT_FILENO, "Chef0 (pid %d) has taken the walnut\nChef0 (pid %d) has taken the sugar.\n", getpid(), getpid());
                 dprintf(STDOUT_FILENO, "Chef0 (pid %d) is preparing the dessert.\n", getpid());
                 sem_post(&sharedMemory->dessertPrepared);
-                dprintf(STDOUT_FILENO, "Chef0 (pid %d) has delivered the dessert.\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef0 (pid %d) has delivered the dessert.\n\n", getpid());
                 break;
             case 1: // Waiting for FLOUR and WALNIT [has milk and sugar]
                 dprintf(STDOUT_FILENO, "Chef1 (pid %d) is waiting for milk and sugar.\n", getpid());
@@ -272,7 +275,7 @@ int chef(int chefNumber){
                 dprintf(STDOUT_FILENO, "Chef1 (pid %d) has taken the walnut\nChef0 (pid %d) has taken the flour.\n", getpid(), getpid());
                 dprintf(STDOUT_FILENO, "Chef1 (pid %d) is preparing the dessert.\n", getpid());
                 sem_post(&sharedMemory->dessertPrepared);
-                dprintf(STDOUT_FILENO, "Chef1 (pid %d) has delivered the dessert.\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef1 (pid %d) has delivered the dessert.\n\n", getpid());
                 break;
             case 2: // Waiting for SUGAR and FLOUR [has milk and walnuts]
                 dprintf(STDOUT_FILENO, "Chef2 (pid %d) is waiting for sugar and flour.\n", getpid());
@@ -280,7 +283,7 @@ int chef(int chefNumber){
                 dprintf(STDOUT_FILENO, "Chef2 (pid %d) has taken the flour\nChef2 (pid %d) has taken the sugar\n", getpid(), getpid());
                 dprintf(STDOUT_FILENO, "Chef2 (pid %d) is preparing the dessert.\n", getpid());
                 sem_post(&sharedMemory->dessertPrepared);
-                dprintf(STDOUT_FILENO, "Chef2 (pid %d) has delivered the dessert.\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef2 (pid %d) has delivered the dessert.\n\n", getpid());
                 break;
             case 3: // Waiting for MILK and FLOUR [has sugar and walnuts]
                 dprintf(STDOUT_FILENO, "Chef3 (pid %d) is waiting for milk and flour.\n", getpid());
@@ -288,13 +291,13 @@ int chef(int chefNumber){
                 dprintf(STDOUT_FILENO, "Chef3 (pid %d) has taken the flour\nChef3 (pid %d) has taken the milk\n",  getpid(),  getpid());
                 dprintf(STDOUT_FILENO, "Chef3 (pid %d) is preparing the dessert.\n", getpid());
                 sem_post(&sharedMemory->dessertPrepared);
-                dprintf(STDOUT_FILENO, "Chef3 (pid %d) has delivered the dessert.\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef3 (pid %d) has delivered the dessert.\n\n", getpid());
                 break;
             case 4: // Waiting for  MILK and WALNUTS [has sugar and flour]
                 dprintf(STDOUT_FILENO, "Chef4 (pid %d) is waiting for milk and walnuts.\n", getpid());
                 sem_wait(&sharedMemory->flourAndSugarSignal);
                 dprintf(STDOUT_FILENO, "Chef4 (pid %d) has taken the milk\nChef4 (pid %d) has taken the walnuts\n", getpid(),  getpid());
-                dprintf(STDOUT_FILENO, "Chef4 (pid %d) is preparing the dessert.\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef4 (pid %d) is preparing the dessert.\n\n", getpid());
                 sem_post(&sharedMemory->dessertPrepared);
                 dprintf(STDOUT_FILENO, "Chef4 (pid %d) has delivered the dessert.\n", getpid());
                 break;
@@ -305,16 +308,20 @@ int chef(int chefNumber){
                 dprintf(STDOUT_FILENO, "Chef5 (pid %d) is preparing the dessert.\n", getpid());
                 // Dessert is prepared so let program continue with next line of file
                 sem_post(&sharedMemory->dessertPrepared);
-                dprintf(STDOUT_FILENO, "Chef5 (pid %d) has delivered the dessert.\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef5 (pid %d) has delivered the dessert.\n\n", getpid());
                 break;
             default:
                 errorAndExit("Chef number is not valid. ");
         }
-        counter++;
+        ++counter;
         if(signalFlag == 1){
-            printf("\nChef%d (pid %d) is exiting...\n", chefNumber, getpid());
-            dprintf(STDOUT_FILENO, "Chef%d prepared %d desserts.\n", chefNumber, counter);
-            return counter;
+            // sem_wait() function is interruptible by a signal. So, last ++counter comes eventually. (--counter is needed)
+            --counter; 
+            printf("Chef%d (pid %d) is exiting...\n", chefNumber, getpid());
+            // return counter;
+            // https://man7.org/linux/man-pages/man3/exit.3.html 
+            // As it says here; with exit(), least significant byte of status (i.e., status & 0xFF) is RETURNed to the parent
+            exit(counter & 0XFF); 
         }
     }
 }
