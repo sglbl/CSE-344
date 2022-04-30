@@ -12,7 +12,7 @@
 
 SharedMemory *sharedMemory;
 static int lineNumber = 0;
-static char (*ingredientsInFile)[2];
+static char (*ingredientsInFile)[2]; //çç
 static volatile sig_atomic_t signalFlag = 0; // Flag for signal handling
 
 void signalHandlerInitializer(){
@@ -57,10 +57,8 @@ void arrayStorer(char* inputFilePath){
     }
 
     int size = statOfFile.st_size/2;
-    // char (*ingredientsInFile)[2];
     ingredientsInFile = calloc(size, sizeof(char)); // Allocating memory for ingredients array
     
-    // char ingredients[size][2];
     for(int i = 0; i<size; i++){
         if( read(fileDesc, ingredientsInFile[i], 2) == -1 && errno == EINTR )
             errorAndExit("Error while reading file to array");
@@ -99,8 +97,6 @@ void semaphoreInitializer(){
 
     if( sem_init(&sharedMemory->accessing, 1 /* Pshare */, 1) < 0 )
         errorAndExit("Semaphore initialize error ");
-    // if( sem_init(&sharedMemory->wholesaler, 1 /* Pshare */, 1) < 0 )
-    //     errorAndExit("Semaphore initialize error ");
 
     if( sem_init(&sharedMemory->milk, 1 /* Pshare */, 0) < 0 )
         errorAndExit("Semaphore initialize error ");

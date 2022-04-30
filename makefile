@@ -1,9 +1,13 @@
-target: compile
+target: compile_all
 
-compile:
+compile_all:
+	gcc -Wall main_unnamed.c sync_unnamed.c -o hw3unnamed
+	gcc -Wall main_named.c sync_named.c -o hw3named
+
+compile_unnamed:
 	gcc -Wall main_unnamed.c sync_unnamed.c -o hw3unnamed
 
-run:
+run_unnamed:
 	gcc -Wall main_unnamed.c sync_unnamed.c -o hw3unnamed
 	./hw3unnamed -i files/inputFile.txt 
 
