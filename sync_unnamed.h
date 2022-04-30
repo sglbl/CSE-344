@@ -31,24 +31,31 @@ typedef struct SharedMemory {
     chef5 has an endless supply of flour and walnuts but lacks sugar and milk. 
 */
 
+/* Print error message with error code and exit */
 void errorAndExit(char *errorMessage);
 
+/* Initialize signal handler's prerequirements */
 void signalHandlerInitializer();
 
+/* Signal handler */
 void sg_signalHandler(int signalNumber);
 
+/* Store the array */
 void arrayStorer(char* dataFilePath);
 
+/* Handle the problem */
 void problemHandler();
 
+/* Chef (child) process */
 int chef(int chefNumber);
 
+/* Wholesaler (parent) process */
 void wholesalerProcess(pid_t pidsFromFork[]);
 
-int totalDessertNumberFinder();
-
+/* Converts initial of ingredient to string */
 char *stringConverter(char character);
 
+/* Pushers for ingredients */
 void pusherMilk();
 
 void pusherFlour();
@@ -56,6 +63,5 @@ void pusherFlour();
 void pusherWalnut();
 
 void pusherSugar();
-
 
 #endif

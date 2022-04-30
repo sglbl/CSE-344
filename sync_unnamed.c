@@ -231,9 +231,6 @@ void wholesalerProcess(pid_t pidsFromFork[]){
         }
         // dprintf(STDOUT_FILENO, "--Entering line number %d--\n", lineNumber);
         if(lineNumber == sharedMemory->numberOfLines || signalFlag == 1){
-            if( signalFlag == 1 ){
-                dprintf(STDOUT_FILENO, "\n\n----Signal flag is 1\n");
-            }
             // Killing the PUSHER processes with SIGKILL
             for(int i = 0; i < NUMBER_OF_INGREDIENTS; i++)
                 if( kill(pidsFromFork[i], SIGKILL) == -1 )
@@ -297,9 +294,9 @@ int chef(int chefNumber){
                 dprintf(STDOUT_FILENO, "Chef4 (pid %d) is waiting for milk and walnuts.\n", getpid());
                 sem_wait(&sharedMemory->flourAndSugarSignal);
                 dprintf(STDOUT_FILENO, "Chef4 (pid %d) has taken the milk\nChef4 (pid %d) has taken the walnuts\n", getpid(),  getpid());
-                dprintf(STDOUT_FILENO, "Chef4 (pid %d) is preparing the dessert.\n\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef4 (pid %d) is preparing the dessert.\n", getpid());
                 sem_post(&sharedMemory->dessertPrepared);
-                dprintf(STDOUT_FILENO, "Chef4 (pid %d) has delivered the dessert.\n", getpid());
+                dprintf(STDOUT_FILENO, "Chef4 (pid %d) has delivered the dessert.\n\n", getpid());
                 break;
             case 5: // Waiting for SUGAR and MILK [has flour and walnuts]
                 dprintf(STDOUT_FILENO, "Chef5 (pid %d) is waiting for sugar and milk.\n", getpid());
