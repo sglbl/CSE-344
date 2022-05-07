@@ -11,13 +11,16 @@
 #include <sys/stat.h> // Stat command
 #include <signal.h> // Signal handling
 #include <pthread.h> // Threads
-#include <sys/types.h> // For semaphore
-#include <sys/ipc.h>  // For semaphore
-#include <sys/sem.h>  // For semaphore
+// #include <sys/types.h> // For semaphore
+// #include <sys/ipc.h>  // For semaphore
+// #include <sys/sem.h>  // For semaphore
+#include <semaphore.h> // Semaphore
 #include "additional.h"
 
 static int C, N;
 static char *filePath;
+
+sem_t *semaphore1, *semaphore2;
 
 // void createSemSet(){
 //     key_t key;
@@ -54,7 +57,7 @@ void *supplierThread(void *arg){
 
     // Reading from file byte by byte
     for(int i = 0; ; ++i){
-
+        // sem_wait(semaphore1);
         if( (readedByte = read(fileDesc, &buffer[i], 1)) < 0 ){
             errorAndExit("Error while reading file");
         }
@@ -63,20 +66,42 @@ void *supplierThread(void *arg){
             printf("i = %d\n", i);
             break;
         }
-        dprintf(STDOUT_FILENO, "The byte readed is %c\n", buffer[i]);
+
+        int valOf1 = 0, valOf2 = 0;
+        sem_getvalue(semaphore1, &valOf1);
+        sem_getvalue(semaphore2, &valOf2);
+
+        dprintf(STDOUT_FILENO, "Supplier: read from input a '%c'. Current amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
+        if(buffer[i] == '1')        sem_post(semaphore1);
+        else if(buffer[i] == '2')   sem_post(semaphore2);
+        // else /* Nothing readed */   break;
+
+        valOf1 = 0, valOf2 = 0;
+        sem_getvalue(semaphore1, &valOf1);
+        sem_getvalue(semaphore2, &valOf2);
+
+        dprintf(STDOUT_FILENO, "Supplier: delivered a '%c'. Post-delivery amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
     }
+    close(fileDesc);
+    sem_close(semaphore1);
+    sem_close(semaphore2);
+    sem_unlink("/semaphore");
+    sem_unlink("/semaphore2");
+    
 
 }
 
 void *consumerThread(void *arg){
+    long i = (long)arg; // On most systems, sizeof(long) == sizeof(void *)
     for(int j = 0; j < N; j++){ // Each consumer thread will loop N times.
-        int *i = arg;
-        printf("cosnumed\n");
+        // sem_wait(semaphore2);
+        dprintf(STDOUT_FILENO, "Inside Consumer %ld\n", i);
         // dprintf(STDOUT_FILENO, "Consumer-%d at iteration %d (waiting). "
         // "Current amounts: %d x '1', %d x '2'.\n", *i, j, amountOf1, amountOf2);
 
         // dprintf(STDOUT_FILENO, "Consumer-%d at iteration %d (consumed). "
         // "Post-consumption amounts: %d x '1', %d x '2'.\n", *i, j, amountOf1, amountOf2);
+        
     }
 
 
@@ -92,37 +117,44 @@ void createThreads(int nNumber, int cNumber, char *path){
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
+    //Initializing semaphores
+    if( (semaphore1 = sem_open("/semaphore", O_CREAT, 0644, 0)) == SEM_FAILED){
+        errorAndExit("sem_open error");
+    }
+    if( (semaphore2 = sem_open("/semaphore2", O_CREAT, 0644, 0)) == SEM_FAILED){
+        errorAndExit("sem_open error");
+    }
+
     N = nNumber; C = cNumber; filePath = path;
     if( pthread_create(&master, NULL, supplierThread, (void*)0) != 0 ){ //if returns 0 it's okay.
             dprintf(STDOUT_FILENO, "ERROR from pthread_create()");
             exit(EXIT_FAILURE);
     }
-    if( pthread_join(master, (void**) &returnStatus) != 0 ){
-        dprintf(STDOUT_FILENO, "ERROR from pthread_join()");
-        exit(EXIT_FAILURE);
-    }
     
     // printf("Return status is %d\n", *returnStatus);
 
+    int *returnStatus2[C];
     /* create the workers, then exit */
     for (int i = 0; i < C; i++){  
-        int *returnStatus2;
         // int info;
         // if( pthread_create(&consumers[i], &attr, consumerThread, (void*)&info) != 0 ){ //if returns 0 it's okay.
-        if( pthread_create(&consumers[i], &attr, consumerThread, (void*)i) != 0 ){ //if returns 0 it's okay.
+        if( pthread_create(&consumers[i], &attr, consumerThread, (void*)(long)i) != 0 ){ //if returns 0 it's okay.
             dprintf(STDOUT_FILENO,"ERROR from pthread_create()");
             exit(EXIT_FAILURE);
         }
         
-        if( pthread_join(consumers[i], (void**) &returnStatus2) != 0 ){
+    }
+
+    if( pthread_join(master, (void**) &returnStatus) != 0 ){
+        dprintf(STDOUT_FILENO, "ERROR from pthread_join()");
+        exit(EXIT_FAILURE);
+    }
+
+    for(int i = 0; i < C; i++)
+        if( pthread_join(consumers[i], (void**) &returnStatus2[i]) != 0 ){
             dprintf(STDOUT_FILENO,"ERROR from pthread_join()");
             exit(EXIT_FAILURE);
         }
-        
-        // int intMult = *mult;
-        // free(returnStatus);
-    }
-
 
 
 }
