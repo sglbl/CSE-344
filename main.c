@@ -4,6 +4,7 @@
 #include "additional.h"
 
 int main(int argc, char *argv[]){
+    setvbuf(stdout, NULL, _IONBF, 0);
     int option, C, N;
     char *filePath, *strC, *strN;
 
@@ -19,7 +20,6 @@ int main(int argc, char *argv[]){
                 break;
             case 'F':
                 filePath = optarg;
-                printf("File path is %s\n", filePath);
                 break;
             default:
                 write(STDERR_FILENO, "Error with arguments\nUsage: ./hw4 -C 10 -N 5 -F inputfilePath\n", 62);
@@ -27,6 +27,10 @@ int main(int argc, char *argv[]){
         }
     }
 
+    if( C <= 4 || N <= 1 ){
+        write(STDERR_FILENO, "Error. C should be bigger than 4, N should be bigger than 1\n", 61);
+        exit(EXIT_FAILURE);
+    }
     createSemSet();
     createThreads(C,N, filePath);
 
