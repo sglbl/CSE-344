@@ -8,15 +8,21 @@
 #define TRUE 1
 #define FALSE 0
 
-union semun {
+typedef union SemUnion {
     int val;
     struct semid_ds *buf;
     unsigned short  *array;
-};
+} SemUnion;
 
 void createSemSet();
 
 void createThreads(int C, int N, char *path);
+
+void *consumerThread(void *arg);
+
+void *supplierThread(void *arg);
+
+char *timeStamp();
 
 void errorAndExit(char *errorMessage);
 

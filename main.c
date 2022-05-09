@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
         }
     }
 
-    // createSemSet(C,N, filePath);
+    createSemSet();
     createThreads(C,N, filePath);
 
 
