@@ -94,11 +94,19 @@ void createThreads(int nNumber, int cNumber, char *path){
 
 void postSemaphore(int semIndex){
     // INCREMENTING THE VALUE OF SEMAPHORE WITH SEMCTL
-    struct sembuf sop;
-    sop.sem_num = semIndex; /* Operate on semaphore 0 */ sop.sem_op = 1; /* Wait for value to equal 0 */ sop.sem_flg = 0; //ççsil yroumlari
-    if( semop(semid, &sop, 1) == -1 ){
-        perror("semop");
-        exit(EXIT_FAILURE); 
+    struct sembuf semOper;
+    semOper.sem_num = semIndex; /* sem operation for index0 */ semOper.sem_op = 1; /* Post sem */ semOper.sem_flg = 0;
+    if( semop(semid, &semOper, 1) == -1 ){
+        errorAndExit("semop");
+    }
+}
+
+void waitSemaphore(int semIndex){
+    // DECREMENTING THE VALUE OF SEMAPHORE WITH SEMCTL
+    struct sembuf semOper;
+    semOper.sem_num = semIndex; /* sem operation for index0 */ semOper.sem_op = 0; /* Post sem */ semOper.sem_flg = 0;
+    if( semop(semid, &semOper, 1) == -1 ){
+        errorAndExit("semop");
     }
 }
 
