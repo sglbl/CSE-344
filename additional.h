@@ -24,11 +24,7 @@ void *supplierThread(void *arg);
 
 void postSemaphore(int semIndex);
 
-void waitSemaphore(int semIndex);
-
 void waitSemaphoreForBoth();
-
-void decrementSemaphore(int semIndex);
 
 void tprintf(const char *restrict formattedStr, ...);
 

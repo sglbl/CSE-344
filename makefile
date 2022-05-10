@@ -7,6 +7,10 @@ run:
 	gcc -Wall *.c -o hw4
 	./hw4 -C 10 -N 5 -F files/file.txt
 
+run2:
+	gcc -Wall *.c -o hw4
+	./hw4 -C 10 -N 5 -F files/file2.txt
+
 clean:
 	rm -f hw4
 

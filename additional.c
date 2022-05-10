@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,46 +24,38 @@ static int C, N;
 static char *filePath;
 
 void createSemSet(){
-    setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
-    /* create a semaphore set with 1 semaphore: */
+    // setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
+    // Semaphores are initialized by creating a semaphore set with 2 semaphore
     if ((semid = semget(IPC_PRIVATE/* Private key */,  2 /* Number of sem to cretae */, 0666 | IPC_CREAT)) == -1) {
         errorAndExit("semget");
-        exit(EXIT_FAILURE);
     }
 
     /* initialize semaphore index0 to 0 (semUNionArgument.val) */
-    semUnionArgument.val = 1;
+    semUnionArgument.val = 0;
     if (semctl(semid, 0 /* semaphore with index 0 in set */ , SETVAL /* operation to be performed */, semUnionArgument /* setting this argument with setval */) == -1) {
-        perror("semctl error");
-        exit(EXIT_FAILURE);
+        errorAndExit("semctl error");
     }
 
     /* initialize semaphore index1 to 0 (semUNionArgument.val) */
     if (semctl(semid, 1 /* semaphore with index 0 in set */ , SETVAL /* operation to be performed */, semUnionArgument /* setting this argument with setval */) == -1) {
-        perror("semctl error");
-        exit(EXIT_FAILURE);
+        errorAndExit("semctl error");
     }
 
 }
 
 void createThreads(int nNumber, int cNumber, char *path){
-    // Semaphores are initialized by creating a semaphore set with 2 semaphore
-    int *returnStatus;
     pthread_attr_t attr;
     pthread_t consumers[nNumber];
-    pthread_t master;
+    pthread_t theProducer;
 
     /* set global thread attributes */
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
     N = nNumber; C = cNumber; filePath = path;
-    if( pthread_create(&master, NULL, supplierThread, (void*)0) != 0 ){ //if returns 0 it's okay.
-            tprintf("ERROR from pthread_create()");
-            exit(EXIT_FAILURE);
+    if( pthread_create(&theProducer, NULL, supplierThread, (void*)0) != 0 ){ //if returns 0 it's okay.
+            errorAndExit("pthread_create()");
     }
-    
-    // tprintf("Return status is %d\n", *returnStatus);
 
     int *returnStatus2[C];
     /* create the workers, then exit */
@@ -70,21 +63,19 @@ void createThreads(int nNumber, int cNumber, char *path){
         // int info;
         // if( pthread_create(&consumers[i], &attr, consumerThread, (void*)&info) != 0 ){ //if returns 0 it's okay.
         if( pthread_create(&consumers[i], &attr, consumerThread, (void*)(long)i) != 0 ){ //if returns 0 it's okay.
-            tprintf("ERROR from pthread_create()");
-            exit(EXIT_FAILURE);
+            errorAndExit("pthread_create()");
         }
         
     }
 
-    if( pthread_join(master, (void**) &returnStatus) != 0 ){
-        tprintf("ERROR from pthread_join()");
-        exit(EXIT_FAILURE);
+    if( pthread_detach(theProducer) != 0 ){
+        errorAndExit("pthread_detach()");
     }
+
 
     for(int i = 0; i < C; i++)
         if( pthread_join(consumers[i], (void**) &returnStatus2[i]) != 0 ){
-            tprintf("ERROR from pthread_join()");
-            exit(EXIT_FAILURE);
+            errorAndExit("pthread_join()");
         }
 
 }
@@ -97,11 +88,11 @@ void *supplierThread(void *arg){
     }
 
     // Creating buffer
-    char *buffer = malloc(sizeof(char) * C);
+    char *buffer = calloc(C, sizeof(char));
 
     // Reading from file byte by byte
     for(int i = 0; ; ++i){
-        // sem_wait(semaphore1);
+        printf("Supplier thread is reading...\n");
         if( (readedByte = read(fileDesc, &buffer[i], 1)) < 0 ){
             errorAndExit("Error while reading file");
         }
@@ -124,10 +115,12 @@ void *supplierThread(void *arg){
         valOf1 = 0, valOf2 = 0;
         if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ) errorAndExit("semctl error for sem1");
         if( (valOf2 = semctl(semid, 1, GETVAL)) == -1 ) errorAndExit("semctl error for sem2");
-
+        
         tprintf("Supplier: delivered a '%c'. Post-delivery amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
     }
     close(fileDesc);
+    free(buffer);
+    pthread_exit(NULL);
     // Removing semaphore set
     // if (semctl(semid, 0, IPC_RMID, arg) == -1)  errorAndExit("Semctl error for sem1");
     // if (semctl(semid, 1, IPC_RMID, arg) == -1)  errorAndExit("Semctl error for sem2");
@@ -136,47 +129,33 @@ void *supplierThread(void *arg){
 void *consumerThread(void *arg){
     long i = (long)arg; // On most systems, sizeof(long) == sizeof(void *)
     for(int j = 0; j < N; j++){ // Each consumer thread will loop N times.
-        // sem_wait(semaphore2);
 
         int valOf1 = 0, valOf2 = 0;
         if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ) errorAndExit("semctl error for sem1");
         if( (valOf2 = semctl(semid, 1, GETVAL)) == -1 ) errorAndExit("semctl error for sem2");
-
-        // Using semaphore as blocking semaphore
-        int temp = valOf1;
-
         tprintf("Consumer-%ld at iteration %d (waiting). "
-        "Current amounts: %d x '1', %d x '2'.\n", i, j, valOf1, valOf2);
+            "Current amounts: %d x '1', %d x '2'.\n", i, j, valOf1, valOf2);
 
-        // if( waitSemaphore(0) && waitSemaphore(1) )
-
-        // if(valOf1 != 0 && valOf2 != 0){
-        // waitSemaphore(0); waitSemaphore(1);
         waitSemaphoreForBoth();
-            tprintf("Consumer-%ld at iteration %d (consumed). "
-            "Post-consumption amounts: %d x '1', %d x '2'.\n", i, j, valOf1, valOf2);
-            // decrementSemaphore(0); decrementSemaphore(1);
-        // }
 
+        tprintf("Consumer-%ld at iteration %d (consumed). "
+            "Post-consumption amounts: %d x '1', %d x '2'.\n", i, j, valOf1, valOf2);
+
+
+        valOf1 = 0, valOf2 = 0;
+        if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ) errorAndExit("semctl error for sem1");
+        if( (valOf2 = semctl(semid, 1, GETVAL)) == -1 ) errorAndExit("semctl error for sem2");
+        
     }
     tprintf("Consumer-%ld has left\n", i);
-
+    pthread_exit(NULL);
 }
 
 void postSemaphore(int semIndex){
     // INCREMENTING THE VALUE OF SEMAPHORE WITH SEMCTL
     struct sembuf semOper;
     semOper.sem_num = semIndex; /* sem operation for index0 */ semOper.sem_op = 1; /* Post sem */ semOper.sem_flg = 0;
-    if( semop(semid, &semOper, 1/* Num of sem*/) == -1 ){
-        errorAndExit("semop");
-    }
-}
-
-void waitSemaphore(int semIndex){
-    // DECREMENTING THE VALUE OF SEMAPHORE WITH SEMCTL
-    struct sembuf semOper;
-    semOper.sem_num = semIndex; /* sem operation for index0 */ semOper.sem_op = 0; /* Wait sem */ semOper.sem_flg = 0;
-    if( semop(semid, &semOper, 1/* Num of sem*/) == -1 ){
+    if( semop(semid, &semOper, 1/* Num of operation*/) == -1 ){
         errorAndExit("semop");
     }
 }
@@ -191,20 +170,6 @@ void waitSemaphoreForBoth(){
     semOper[1].sem_num = 1; /* sem operation for semaphore in index1 */ semOper[1].sem_op = -1; /* make sem++ */ semOper[1].sem_flg = 0;
 
     if( semop(semid, semOper /* operations to be performed */, 2/* Num of operations*/) == -1 ){
-        errorAndExit("semop");
-    }
-}
-
-void decrementSemaphore(int semIndex){
-    // Getting sem value
-    int value; 
-    if( (value = semctl(semid, semIndex, GETVAL)) == -1 ) errorAndExit("semctl error for sem");
-    tprintf("Current sem%d value is %d\n", semIndex, value);
-
-    // DECREMENTING THE VALUE OF SEMAPHORE WITH SEMCTL
-    struct sembuf semOper;
-    semOper.sem_num = semIndex; /* sem operation for index0 */ semOper.sem_op = value-1; /* decrement sem */ semOper.sem_flg = 0;
-    if( semop(semid, &semOper, 1) == -1 ){
         errorAndExit("semop");
     }
 }

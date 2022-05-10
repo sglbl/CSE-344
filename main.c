@@ -4,7 +4,7 @@
 #include "additional.h"
 
 int main(int argc, char *argv[]){
-    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
     int option, C, N;
     char *filePath, *strC, *strN;
 
