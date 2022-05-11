@@ -24,9 +24,13 @@ void *supplierThread(void *arg);
 
 void postSemaphore(int semIndex);
 
-void waitSemaphoreForBoth();
+void waitSemaphoreForBoth(long consumerId);
 
 void tprintf(const char *restrict formattedStr, ...);
+
+void signalHandlerInitializer();
+
+void mySignalHandler(int signalNumber);
 
 char *timeStamp();
 

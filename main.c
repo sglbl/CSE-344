@@ -31,6 +31,7 @@ int main(int argc, char *argv[]){
         write(STDERR_FILENO, "Error. C should be bigger than 4, N should be bigger than 1\n", 61);
         exit(EXIT_FAILURE);
     }
+    signalHandlerInitializer();
     createSemSet();
     createThreads(C,N, filePath);
 
