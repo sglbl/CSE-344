@@ -95,8 +95,6 @@ void *supplierThread(void *arg){
         }
         else if(readedByte == 0){
             break;
-        }else{
-            printf("READED VAL IS %c\n", buffer[i]);
         }
 
         // Getting the value of semaphores with semctl
@@ -104,7 +102,7 @@ void *supplierThread(void *arg){
         if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ) errorAndExit("semctl error for sem1_1");
         if( (valOf2 = semctl(semid, 1, GETVAL)) == -1 ) errorAndExit("semctl error for sem2_1");
 
-        tprintf("Supplierr(%dth iteration): read from input a '%c'. Current amounts: %d x '1', %d x '2'.\n", i, buffer[i], valOf1, valOf2);
+        tprintf("Supplierr: read from input a '%c'. Current amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
         if(buffer[i] == '1')        postSemaphore(/* sem number */0);
         else if(buffer[i] == '2')   postSemaphore(/* sem number */1);
         // else /* Nothing readed */   break;       
