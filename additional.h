@@ -16,7 +16,7 @@ typedef union SemUnion {
 
 void createSemSet();
 
-void createThreads(int C, int N, char *path);
+void createThreads(int cNumber, int nNumber, char *path);
 
 void *consumerThread(void *arg);
 

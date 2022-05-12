@@ -5,13 +5,18 @@ compile:
 
 run:
 	gcc -Wall *.c -o hw4
-	./hw4 -C 10 -N 5 -F files/file.txt
+	./hw4 -C 6 -N 2 -F files/file.txt
 
 run2:
 	gcc -Wall *.c -o hw4
 	./hw4 -C 10 -N 5 -F files/file2.txt
 
 debug:
+	gcc -Wall -g *.c -o hw4
+	gdb -q ./hw4
+# r -C 6 -N 2 -F files/file.txt
+
+debug2:
 	gcc -Wall -g *.c -o hw4
 	gdb -q ./hw4
 # r -C 10 -N 5 -F files/file2.txt

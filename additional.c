@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,9 +43,9 @@ void createSemSet(){
 
 }
 
-void createThreads(int nNumber, int cNumber, char *path){
+void createThreads(int cNumber, int nNumber, char *path){
     pthread_attr_t attr;
-    pthread_t consumers[nNumber];
+    pthread_t consumers[cNumber];
     pthread_t theProducer;
 
     /* set global thread attributes */
@@ -54,15 +53,15 @@ void createThreads(int nNumber, int cNumber, char *path){
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
     N = nNumber; C = cNumber; filePath = path;
-    
-    int *returnStatus2[C];
-    /* create the workers, then exit */
+
+    /* create the consumers */
     for (int i = 0; i < C; i++){  
         if( pthread_create(&consumers[i], &attr, consumerThread, (void*)(long)i) != 0 ){ //if returns 0 it's okay.
             errorAndExit("pthread_create()");
         }
     }
 
+    tprintf("Creating supplier\n");
     if( pthread_create(&theProducer, NULL, supplierThread, (void*)0) != 0 ){ //if returns 0 it's okay.
             errorAndExit("pthread_create()");
     }
@@ -72,8 +71,7 @@ void createThreads(int nNumber, int cNumber, char *path){
     }
 
     for(int i = 0; i < C; i++){
-        if( pthread_join(consumers[i], (void**) &returnStatus2[i]) != 0 ){
-        //    if( pthread_join(consumers[i], NULL) != 0 ){
+        if( pthread_join(consumers[i], NULL) != 0 ){
             errorAndExit("pthread_join()");
         }   
     }
@@ -127,8 +125,8 @@ void *supplierThread(void *arg){
 
 void *consumerThread(void *arg){
     long i = (long)arg; // On most systems, sizeof(long) == sizeof(void *)
-    for(int j = 0; j < N; j++){ // Each consumer thread will loop N times.
 
+    for(int j = 0; j < N; j++){ // Each consumer thread will loop N times.
         int valOf1 = 0, valOf2 = 0;
         if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ){
             if(errno == EINVAL) break; /* Supplier exiting so also consumer exits */ 
@@ -203,6 +201,7 @@ char *timeStamp(){
 }
 
 void tprintf(const char *restrict formattedStr, ...){
+    // Variadic function to act like printf with timeStamp
     char newFormattedStr[150];
     snprintf(newFormattedStr, 150, "(%s) %s", timeStamp(), formattedStr);
     va_list argumentList;
