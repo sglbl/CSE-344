@@ -84,9 +84,9 @@ void *supplierThread(void *arg){
     if ((fileDesc = open(filePath, O_RDONLY, S_IRUSR | S_IRGRP | S_IRGRP)) == -1) {
         errorAndExit("Error while opening file");
     }
-    int size = N*C*2; // One for '1', one for '2'
+    int size = N*C*2; // One for '1', one for '2' . (Size has gotten from the command line arguments)
     // Creating buffer
-    char buffer[C];
+    char buffer[C*N*2];
     // Reading from file byte by byte
     for(int i = 0; i < size; ++i){
         // printf("Supplier thread is reading...\n");
@@ -95,6 +95,8 @@ void *supplierThread(void *arg){
         }
         else if(readedByte == 0){
             break;
+        }else{
+            printf("READED VAL IS %c\n", buffer[i]);
         }
 
         // Getting the value of semaphores with semctl
@@ -102,7 +104,7 @@ void *supplierThread(void *arg){
         if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ) errorAndExit("semctl error for sem1_1");
         if( (valOf2 = semctl(semid, 1, GETVAL)) == -1 ) errorAndExit("semctl error for sem2_1");
 
-        tprintf("Supplier: read from input a '%c'. Current amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
+        tprintf("Supplierr(%dth iteration): read from input a '%c'. Current amounts: %d x '1', %d x '2'.\n", i, buffer[i], valOf1, valOf2);
         if(buffer[i] == '1')        postSemaphore(/* sem number */0);
         else if(buffer[i] == '2')   postSemaphore(/* sem number */1);
         // else /* Nothing readed */   break;       
@@ -112,6 +114,7 @@ void *supplierThread(void *arg){
         if( (valOf2 = semctl(semid, 1, GETVAL)) == -1 ) errorAndExit("semctl error for sem2_2");
         
         tprintf("Supplier: delivered a '%c'. Post-delivery amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
+        // tprintf("Supplier(%dth iteration): delivered a '%c'. Post-delivery amounts: %d x '1', %d x '2'.\n", i, buffer[i], valOf1, valOf2);
     }
     close(fileDesc);
 
