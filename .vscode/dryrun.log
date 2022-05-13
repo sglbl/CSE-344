@@ -1,0 +1,5 @@
+make --dry-run --keep-going --print-directory
+make: Entering directory '/home/sglbl/Desktop/CSE344/hw5'
+gcc -Wall main.c additional.c -lm -o hw5
+make: Leaving directory '/home/sglbl/Desktop/CSE344/hw5'
+ 
