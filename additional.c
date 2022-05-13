@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
+#include <stdarg.h> // Variadic function
 #include <time.h>  // Time stamp
 #include <errno.h> // spesific error message
 #include <fcntl.h> // provide control over open files
@@ -15,7 +15,7 @@
 #include <sys/types.h> // For semaphore
 #include <sys/ipc.h>  // For semaphore
 #include <sys/sem.h>  // For semaphore
-#include "additional.h" //çç didsigint
+#include "additional.h" // Additional functions
 
 SemUnion semUnionArgument;
 static int semid;
@@ -102,7 +102,7 @@ void *supplierThread(void *arg){
         if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ) errorAndExit("semctl error for sem1_1");
         if( (valOf2 = semctl(semid, 1, GETVAL)) == -1 ) errorAndExit("semctl error for sem2_1");
 
-        tprintf("Supplierr: read from input a '%c'. Current amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
+        tprintf("Supplier: read from input a '%c'. Current amounts: %d x '1', %d x '2'.\n", buffer[i], valOf1, valOf2);
         if(buffer[i] == '1')        postSemaphore(/* sem number */0);
         else if(buffer[i] == '2')   postSemaphore(/* sem number */1);
         // else /* Nothing readed */   break;       
@@ -142,6 +142,9 @@ void *consumerThread(void *arg){
             "Current amounts: %d x '1', %d x '2'.\n", i, j, valOf1, valOf2);
 
         waitSemaphoreForBoth(i);
+        if(didSigIntCome == 1){
+            break;
+        }
 
         valOf1 = 0, valOf2 = 0;
         if( (valOf1 = semctl(semid, 0, GETVAL)) == -1 ){
@@ -210,6 +213,7 @@ void tprintf(const char *restrict formattedStr, ...){
     vprintf( newFormattedStr, argumentList );
     va_end( argumentList );
 
+    // This is the other way with using gnu source asprintf
 	// va_list ap;
 	// va_start(ap, formattedStr);
     // // Adding time stamp to the string

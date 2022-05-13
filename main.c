@@ -38,7 +38,7 @@ int main(int argc, char *argv[]){
         write(STDERR_FILENO, "Error while opening the file.\n",30);
         exit(EXIT_FAILURE);
     }
-    if(statOfFile.st_size != 2*C*N && statOfFile.st_size != 2*C*N-1){
+    if(statOfFile.st_size != 2*C*N && statOfFile.st_size != 2*C*N-1 && statOfFile.st_size != 2*C*N+1){
         printf("Error Size of file is %ld doesn't match 2*C*N %d\n", statOfFile.st_size, C*N);
         write(STDERR_FILENO, "Size of file should be equal to 2 times C*N.(One for '1', one for '2')\nPlease put a valid file.\n", 96);
         exit(EXIT_FAILURE);

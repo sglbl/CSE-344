@@ -22,7 +22,7 @@ debug2:
 # r -C 10 -N 5 -F files/file2.txt
 
 run_warning:
-	gcc -Wall -Wextra -Werror *.c -o hw4
+	gcc -Wall -Wextra *.c -o hw4
 	./hw4 -C 10 -N 5 -F files/file.txt
 
 clean:
