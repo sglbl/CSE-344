@@ -55,9 +55,9 @@ int main(int argc, char *argv[]){
     int *fileDescs = openFiles(filePath1, filePath2, outputPath);
 
     int twoToN = pow(2,n);
-    char matrixA[twoToN][twoToN], matrixB[twoToN][twoToN];
+    int matrixA[twoToN][twoToN], matrixB[twoToN][twoToN];
     readMatrices(n, m, twoToN, fileDescs, matrixA, matrixB);
-    
+
     createThreads(twoToN, matrixA, matrixB);
 
     free(fileDescs);

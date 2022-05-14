@@ -15,7 +15,7 @@
 
 static pthread_mutex_t mutex;
 static int N, M;
-static char **matrixC;
+static int **matrixC;
 static volatile sig_atomic_t didSigIntCome = 0;
 // çç ascii check
 
@@ -31,34 +31,37 @@ int* openFiles(char *filePath1, char *filePath2, char *outputPath){
     return fileDescs;
 }
 
-void readMatrices(int n, int m, int twoToN, int fileDescs[3], char matrixA[][twoToN], char matrixB[][twoToN]){
+void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoToN], int matrixB[][twoToN]){
     N = n, M = m;
     int readByte1, readByte2;
+    char buffer1[twoToN][twoToN], buffer2[twoToN][twoToN];
 
     // Reading from file byte by byte
     for(int i = 0; i < twoToN; ++i){
         // printf("Supplier thread is reading...\n");
-        if( (readByte1 = read(fileDescs[0], matrixA[i], twoToN)) < 0 ){
+        if( (readByte1 = read(fileDescs[0], buffer1[i], twoToN)) < 0 )
             errorAndExit("Error while reading file1");
-        }
-        else if(readByte1 == 0){
+        else if(readByte1 == 0)
             break;
+
+        if( (readByte2 = read(fileDescs[1], buffer2[i], twoToN)) < 0 )
+            errorAndExit("Error while reading file2");
+        else if(readByte2 == 0)
+            break;
+        
+        for(int j = 0; j < twoToN; ++j){
+            matrixA[i][j] = buffer1[i][j];
+            matrixB[i][j] = buffer2[i][j];
         }
 
-        if( (readByte2 = read(fileDescs[1], matrixB[i], twoToN)) < 0 ){
-            errorAndExit("Error while reading file2");
-        }
-        else if(readByte2 == 0){
-            break;
-        }
-        // tprintf("Row[%d] from file1: %s, Row[%d] from file2: %s\n", i, buffer1[i], i, buffer2[i]);
+        tprintf("Row[%d] from file1: %d, Row[%d] from file2: %d\n", i, matrixA[i][0], i, matrixB[i][0]);
     }
-    tprintf("Files are readed\n");
+    tprintf("Two matrices of size %dx%d have been read. The number of threads is %d\n", twoToN, twoToN, M);
     close(fileDescs[0]);    close(fileDescs[1]);    close(fileDescs[2]);   // closing file descriptors
 
 }
 
-void createThreads(int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN][twoToN]){
+void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
     // Initializing mutex
     pthread_mutex_init(&mutex, NULL); 
     pthread_attr_t attr;
@@ -69,9 +72,9 @@ void createThreads(int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
     // Initializing matrix C
-    matrixC = calloc(twoToN, sizeof(char*));
+    matrixC = calloc(twoToN, sizeof(int*));
     for(int i = 0; i < twoToN; ++i){
-        matrixC[i] = calloc(twoToN, sizeof(char));
+        matrixC[i] = calloc(twoToN, sizeof(int));
     }
 
     /* create info ve allocate place to matrices for m threads */
@@ -79,8 +82,9 @@ void createThreads(int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN
     for (int i = 0; i < M; i++){  
         info[i].index = i;
         info[i].twoToN = twoToN;
-        info[i].matrixA = calloc(twoToN, sizeof(char*));
-        info[i].matrixB = calloc(twoToN, sizeof(char*));
+        info[i].numOfColumnToCalculate = twoToN / M;
+        info[i].matrixA = calloc(twoToN, sizeof(int*));
+        info[i].matrixB = calloc(twoToN, sizeof(int*));
         putMatrixToInfo(info[i], twoToN, matrixA, matrixB);
     }
 
@@ -96,26 +100,37 @@ void createThreads(int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN
             errorAndExit("pthread_join()");
         }
     }
-    
 
+    // Printing stdout matrix C
+    matrixPrinter(twoToN, matrixC);
+    
 }
 
-void putMatrixToInfo(Info info, int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN][twoToN]){
+void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
     for(int j = 0; j < twoToN; j++){
-        info.matrixA[j] = calloc(twoToN, sizeof(char));
-        info.matrixB[j] = calloc(twoToN, sizeof(char));
+        info.matrixA[j] = calloc(twoToN, sizeof(int));
+        info.matrixB[j] = calloc(twoToN, sizeof(int));
         for(int k = 0; k < twoToN; k++){
             info.matrixA[j][k] = matrixA[j][k];
             info.matrixB[j][k] = matrixB[j][k];
-            tprintf("Pointer is %c\n", info.matrixA[j][k]);
+            // tprintf("Pointer is %c\n", info.matrixA[j][k]);
         }
     }
 
 }
 
+void matrixPrinter(int twoToN, int **matrix){
+    for(int i = 0; i < twoToN; ++i){
+        for(int j = 0; j < twoToN; ++j){
+            printf("%d\t", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
+
 void *threadJob(void *arg){
     Info *info = arg;
-    int columnIndex = info->index;
+    // int columnIndex = info->index;
     
     /*  Every thread will calculate the one column of matrix C = matrixA * matrixB
             A           B           C
@@ -128,18 +143,21 @@ void *threadJob(void *arg){
         z = g * k + h * l + j * m
     */
 
-    // Thread_index calculates the indexTh column of matrixC
-    for(int i = 0; i < info->twoToN; ++i){
-        matrixC[i][columnIndex] = 0; /* row i, column index */
+    for(int i = 0; i < info->numOfColumnToCalculate; ++i){
+        // Thread_index calculates the indexTh column of matrixC
         for(int j = 0; j < info->twoToN; ++j){
-            // Entering critical section.
-            pthread_mutex_lock(&mutex);
-            matrixC[i][columnIndex] += info->matrixA[i][j] * info->matrixB[j][columnIndex];
-            pthread_mutex_unlock(&mutex);
+            int columnIndex = info->index * info->numOfColumnToCalculate + i;
+            matrixC[j][columnIndex] = 0; /* row i, column index */
+            for(int k = 0; k < info->twoToN; ++k){
+                // Entering critical section.
+                pthread_mutex_lock(&mutex);
+                matrixC[j][columnIndex] += info->matrixA[j][k] * info->matrixB[k][columnIndex];
+                pthread_mutex_unlock(&mutex);
+            }
         }
     }
 
-    tprintf("Thread-%d calculated the column-%d of matrix C\n", columnIndex, columnIndex);
+    tprintf("Thread-%d calculated %d columns of matrix C\n", info->index, info->numOfColumnToCalculate);
     pthread_exit(NULL);
 }
 

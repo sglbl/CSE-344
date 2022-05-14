@@ -11,17 +11,20 @@
 typedef struct Info {
     int index;
     int twoToN;
-    char **matrixA;
-    char **matrixB;
+    int numOfColumnToCalculate;
+    int **matrixA;
+    int **matrixB;
 } Info;
 
 int *openFiles(char *filePath1, char *filePath2, char *output);
 
-void readMatrices(int n, int m, int twoToN, int fileDescs[3], char matrixA[][twoToN], char matrixB[][twoToN]);
+void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoToN], int matrixB[][twoToN]);
 /* Creates threads */
-void createThreads(int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN][twoToN]);
+void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]);
 
-void putMatrixToInfo(Info info, int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN][twoToN]);
+void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]);
+
+void matrixPrinter(int twoToN, int **matrix);
 
 /* Thread routine */
 void *threadJob(void *arg);
