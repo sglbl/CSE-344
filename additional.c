@@ -14,6 +14,9 @@
 #include "additional.h" // Additional functions
 
 static pthread_mutex_t mutex;
+static pthread_mutex_t barrierMutex;
+static pthread_cond_t barrierCond;
+static int part1FinishedThreads;
 static int N, M;
 static int **matrixC;
 static volatile sig_atomic_t didSigIntCome = 0;
@@ -50,6 +53,9 @@ void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoT
             break;
         
         for(int j = 0; j < twoToN; ++j){
+            if(buffer1[i][j] < 0 || buffer1[i][j] > 256 || buffer2[i][j] < 0 || buffer2[i][j] > 256){
+                errorAndExit("Fİle contains non-ascii value. Put a valid file ");
+            }
             matrixA[i][j] = buffer1[i][j];
             matrixB[i][j] = buffer2[i][j];
         }
@@ -64,6 +70,8 @@ void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoT
 void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
     // Initializing mutex
     pthread_mutex_init(&mutex, NULL); 
+    pthread_mutex_init(&barrierMutex, NULL); 
+    pthread_cond_init(&barrierCond, NULL);
     pthread_attr_t attr;
     pthread_t threads[M];
 
@@ -143,6 +151,9 @@ void *threadJob(void *arg){
         z = g * k + h * l + j * m
     */
 
+    // Get time difference to find the time taken by each thread
+    clock_t timeBegin = clock();
+
     for(int i = 0; i < info->numOfColumnToCalculate; ++i){
         // Thread_index calculates the indexTh column of matrixC
         for(int j = 0; j < info->twoToN; ++j){
@@ -158,7 +169,30 @@ void *threadJob(void *arg){
     }
 
     tprintf("Thread-%d calculated %d columns of matrix C\n", info->index, info->numOfColumnToCalculate);
+
+    // Barrier    
+    barrier();
+	double seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
+    tprintf("Thread-%d has reached the rendezvous point in %.5f seconds\n", info->index, seconds);
+
     pthread_exit(NULL);
+}
+
+void barrier(){
+    pthread_mutex_lock(&barrierMutex);
+    ++part1FinishedThreads;
+    while(TRUE){ // Not busy waiting. Using conditional variable + mutex for monitoring
+        if(part1FinishedThreads == M /* Number of threads */){
+            part1FinishedThreads = 0;
+            pthread_cond_broadcast(&barrierCond); // signal to all threads to wake them up
+            break;
+        }
+        else{
+            pthread_cond_wait(&barrierCond, &barrierMutex);
+            break;
+        }
+    }
+    pthread_mutex_unlock(&barrierMutex);
 }
 
 char *timeStamp(){

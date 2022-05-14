@@ -26,13 +26,11 @@ void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int mat
 
 void matrixPrinter(int twoToN, int **matrix);
 
+void barrier();
+
 /* Thread routine */
 void *threadJob(void *arg);
-/* Posts semaphore */
-void postSemaphore(int semIndex);
-/* Waits for semaphore */
-void waitSemaphoreForBoth(long consumerId);
-/* tprintf */
+/* Prints with timestamp */
 void tprintf(const char *restrict formattedStr, ...);
 /* Initializes signal handler */
 void signalHandlerInitializer();

@@ -47,8 +47,10 @@ int main(int argc, char *argv[]){
         write(STDERR_FILENO, "Error while opening the file.\n",30); exit(EXIT_FAILURE);
     }
     if( statOfFile[0].st_size < pow(2,n)*pow(2,n) || statOfFile[1].st_size < pow(2,n)*pow(2,n) ){
-        write(STDERR_FILENO,"Error. Size of file is less than (2^n)*(2^n)\n", 45);
-        exit(EXIT_FAILURE);
+        write(STDERR_FILENO,"Error. Size of file is less than (2^n)*(2^n)\n", 45);  exit(EXIT_FAILURE);
+    }
+    if( (int)(pow(2,n)) % m != 0 || m > pow(2,n) ){
+        write(STDERR_FILENO,"Error. m should be less than or equal to 2^n and m should be divisible by 2^n\n", 78);  exit(EXIT_FAILURE);
     }
 
     signalHandlerInitializer();
