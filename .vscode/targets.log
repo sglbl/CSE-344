@@ -8,7 +8,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Fri May 13 21:52:28 2022
+# Make data base, printed on Sat May 14 10:16:32 2022
 
 # Variables
 
@@ -23,7 +23,9 @@ SSH_AGENT_LAUNCHER = gnome-keyring
 # environment
 SNAP_INSTANCE_KEY = 
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-1c8be290-ad33-4ba0-8c5c-43f7b8dd9ff5.sock
+GJS_DEBUG_OUTPUT = stderr
+# environment
+VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-2e04ef0b-8a28-487e-b88f-4f88f493171d.sock
 # environment
 LC_NAME = tr_TR.UTF-8
 # environment
@@ -63,21 +65,21 @@ VSCODE_CODE_CACHE_PATH = /home/sglbl/.config/Code/CachedData/da15b6fd3ef856477bf
 # environment
 LANG = C
 # environment
-XAUTHORITY = /run/user/1000/.mutter-Xwaylandauth.HCE4L1
+XAUTHORITY = /run/user/1000/.mutter-Xwaylandauth.F8LVL1
 # default
 .LOADED := 
 # default
 .INCLUDE_DIRS = /usr/local/include /usr/include /usr/include
 # makefile
 MAKEFLAGS = pqrR
-# environment
-DBUS_STARTER_ADDRESS = unix:path=/run/user/1000/bus,guid=792b5e69ad0e2b52096fd7fa627e12df
 # makefile
 CURDIR := /home/sglbl/Desktop/CSE344/hw5
 # environment
 VSCODE_PIPE_LOGGING = true
 # environment
 APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
+# environment
+LESSOPEN = | /usr/bin/lesspipe %s
 # automatic
 *D = $(patsubst %/,%,$(dir $*))
 # environment
@@ -103,21 +105,21 @@ SNAP_REEXEC =
 # environment
 VSCODE_VERBOSE_LOGGING = true
 # environment
-VSCODE_PID = 8420
+VSCODE_PID = 4447
 # environment
 XDG_SESSION_TYPE = wayland
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
 # environment
-SESSION_MANAGER = local/sglblPC:@/tmp/.ICE-unix/1817,unix/sglblPC:/tmp/.ICE-unix/1817
+BAMF_DESKTOP_FILE_HINT = /var/lib/snapd/desktop/applications/code_code.desktop
+# environment
+SESSION_MANAGER = local/sglblPC:@/tmp/.ICE-unix/1793,unix/sglblPC:/tmp/.ICE-unix/1793
 # automatic
 *F = $(notdir $*)
 # environment
 CHROME_DESKTOP = code-url-handler.desktop
 # environment
-DBUS_SESSION_BUS_ADDRESS = unix:path=/run/user/1000/bus,guid=792b5e69ad0e2b52096fd7fa627e12df
-# environment
-INSIDE_NAUTILUS_PYTHON = 
+DBUS_SESSION_BUS_ADDRESS = unix:path=/run/user/1000/bus
 # automatic
 <D = $(patsubst %/,%,$(dir $<))
 # environment
@@ -133,15 +135,19 @@ MAKECMDGOALS := all
 # environment
 XMODIFIERS = @im=ibus
 # environment
+GJS_DEBUG_TOPICS = JS ERROR;JS LOG
+# environment
 SHLVL = 0
 # environment
 MAKELEVEL := 0
+# environment
+IM_CONFIG_CHECK_ENV = 1
 # default
 MAKE = $(MAKE_COMMAND)
 # environment
 SNAP_COOKIE = wSrGLGzIWQ-OXgr4q1mesG8imYhn3pSBptQK_ZbeaR5f9odL1UC_
 # environment
-PATH = /home/sglbl/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin
+PATH = /home/sglbl/bin:/home/sglbl/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin
 # default
 MAKEFILES := 
 # environment
@@ -155,7 +161,7 @@ LC_TIME = tr_TR.UTF-8
 # environment
 SNAP = /snap/code/96
 # environment
-INVOCATION_ID = 0c5159ebceb6444da38827376045dc2f
+INVOCATION_ID = 1e62b7544cf3402baf73766dcb0a77cd
 # environment
 SNAP_REVISION = 96
 # environment
@@ -168,10 +174,14 @@ USERNAME = sglbl
 GNOME_SETUP_DISPLAY = :1
 # environment
 LC_TELEPHONE = tr_TR.UTF-8
+# environment
+LESSCLOSE = /usr/bin/lesspipe %s %s
 # automatic
 ?F = $(notdir $?)
 # environment
 XDG_CURRENT_DESKTOP = Unity
+# environment
+LS_COLORS = 
 # automatic
 +F = $(notdir $+)
 # environment
@@ -183,11 +193,13 @@ GNUMAKEFLAGS :=
 # environment
 LOGNAME = sglbl
 # environment
+GIO_LAUNCHED_DESKTOP_FILE = /var/lib/snapd/desktop/applications/code_code.desktop
+# environment
 SNAP_ARCH = amd64
 # makefile
 .DEFAULT_GOAL := target
 # environment
-SYSTEMD_EXEC_PID = 1817
+SYSTEMD_EXEC_PID = 1859
 # environment
 DISPLAY = :0
 # environment
@@ -203,11 +215,13 @@ SNAP_DATA = /var/snap/code/96
 # environment
 SNAP_CONTEXT = wSrGLGzIWQ-OXgr4q1mesG8imYhn3pSBptQK_ZbeaR5f9odL1UC_
 # environment
-MANAGERPID = 1628
-# environment
-DBUS_STARTER_BUS_TYPE = session
+MANAGERPID = 1641
 # environment
 LC_MEASUREMENT = tr_TR.UTF-8
+# environment
+GIO_LAUNCHED_DESKTOP_FILE_PID = 4402
+# environment
+_ = /snap/code/96/usr/share/code/code
 # environment
 LC_PAPER = tr_TR.UTF-8
 # environment
@@ -215,7 +229,7 @@ XDG_RUNTIME_DIR = /run/user/1000
 # environment
 GDK_PIXBUF_MODULE_FILE = /home/sglbl/snap/code/common/.cache/gdk-pixbuf-loaders.cache
 # environment
-JOURNAL_STREAM = 8:38140
+JOURNAL_STREAM = 8:35346
 # environment
 XDG_SESSION_CLASS = user
 # environment
@@ -261,7 +275,7 @@ LC_IDENTIFICATION = tr_TR.UTF-8
 # environment
 SNAP_LIBRARY_PATH = /var/lib/snapd/lib/gl:/var/lib/snapd/lib/gl32:/var/lib/snapd/void
 # variable set hash-table stats:
-# Load=124/1024=12%, Rehash=0, Collisions=6/154=4%
+# Load=131/1024=13%, Rehash=0, Collisions=5/161=3%
 
 # Pattern-specific Variable Values
 
@@ -269,9 +283,9 @@ SNAP_LIBRARY_PATH = /var/lib/snapd/lib/gl:/var/lib/snapd/lib/gl32:/var/lib/snapd
 
 # Directories
 
-# . (device 2053, inode 693693): 13 files, no impossibilities.
+# . (device 2053, inode 693693): 14 files, no impossibilities.
 
-# 13 files, no impossibilities in 1 directories.
+# 14 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -289,6 +303,7 @@ compile:
 debug:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'makefile', line 11):
 	gcc -Wall -g *.c -o hw4
@@ -316,7 +331,6 @@ run_valgrind:
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes  ./hw4 -C 10 -N 5 -F files/file2.txt
 
 # Not a target:
- 
 all:
 #  Command line target.
 #  Implicit rule search has been done.
@@ -359,12 +373,12 @@ run_warning:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 25 / storage = 226 B / avg = 9 B
-# current buf: size = 8162 B / used = 226 B / count = 25 / avg = 9 B
+# strcache buffers: 1 (0) / strings = 26 / storage = 231 B / avg = 8 B
+# current buf: size = 8162 B / used = 231 B / count = 26 / avg = 8 B
 
-# strcache performance: lookups = 37 / hit rate = 32%
+# strcache performance: lookups = 38 / hit rate = 31%
 # hash-table stats:
-# Load=25/8192=0%, Rehash=0, Collisions=0/37=0%
-# Finished Make data base on Fri May 13 21:52:28 2022
+# Load=26/8192=0%, Rehash=0, Collisions=0/38=0%
+# Finished Make data base on Sat May 14 10:16:32 2022
 
  

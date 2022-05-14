@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 #include <sys/stat.h>
 #include "additional.h"
 
@@ -37,21 +38,28 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
-    // çç
-    // struct stat statOfFile;  //Adress of statOfFile will be sent to stat() function in order to get size information of file.
-    // if(stat(filePath, &statOfFile) < 0){
-    //     write(STDERR_FILENO, "Error while opening the file.\n",30);
-    //     exit(EXIT_FAILURE);
-    // }
-    // if(statOfFile.st_size != 2*C*N && statOfFile.st_size != 2*C*N-1 && statOfFile.st_size != 2*C*N+1){
-    //     printf("Error Size of file is %ld doesn't match 2*C*N %d\n", statOfFile.st_size, C*N);
-    //     write(STDERR_FILENO, "Size of file should be equal to 2 times C*N.(One for '1', one for '2')\nPlease put a valid file.\n", 96);
-    //     exit(EXIT_FAILURE);
-    // }
+    // File size checking with stat function.
+    struct stat statOfFile[2];  //Adress of statOfFile will be sent to stat() function in order to get size information of file.
+    if(stat(filePath1, &statOfFile[0]) < 0){
+        write(STDERR_FILENO, "Error while opening the file.\n",30); exit(EXIT_FAILURE);
+    }
+    if(stat(filePath2, &statOfFile[1]) < 0){
+        write(STDERR_FILENO, "Error while opening the file.\n",30); exit(EXIT_FAILURE);
+    }
+    if( statOfFile[0].st_size < pow(2,n)*pow(2,n) || statOfFile[1].st_size < pow(2,n)*pow(2,n) ){
+        write(STDERR_FILENO,"Error. Size of file is less than (2^n)*(2^n)\n", 45);
+        exit(EXIT_FAILURE);
+    }
 
     signalHandlerInitializer();
     int *fileDescs = openFiles(filePath1, filePath2, outputPath);
-    createThreads(n,m, fileDescs);
+
+    int twoToN = pow(2,n);
+    char matrixA[twoToN][twoToN], matrixB[twoToN][twoToN];
+    readMatrices(n, m, twoToN, fileDescs, matrixA, matrixB);
+    createThreads(twoToN, matrixA, matrixB);
+
+    free(fileDescs);
 
     return 0;
 }

@@ -15,9 +15,10 @@ typedef struct Info {
 
 int *openFiles(char *filePath1, char *filePath2, char *output);
 
+void readMatrices(int n, int m, int twoToN, int fileDescs[3], char matrixA[][twoToN], char matrixB[][twoToN]);
+
 /* Creates threads */
-// void createThreads(int n, int m, char *path1, char *path2, char *outputPath);
-void createThreads(int n, int m, int fileDescs[3]);
+void createThreads(int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN][twoToN]);
 /* Thread routine */
 void *threadJob(void *arg);
 /* Posts semaphore */
