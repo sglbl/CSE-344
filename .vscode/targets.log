@@ -8,7 +8,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Sat May 14 10:16:32 2022
+# Make data base, printed on Sat May 14 16:32:37 2022
 
 # Variables
 
@@ -298,19 +298,19 @@ compile:
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'makefile', line 4):
-	gcc -Wall main.c additional.c -lm -o hw5
+	gcc -Wall *.c -lm -o hw5
 
 debug:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
- 
 #  File has not been updated.
 #  recipe to execute (from 'makefile', line 11):
-	gcc -Wall -g *.c -o hw4
-	gdb -q ./hw4
+	gcc -Wall -g *.c -lm -o hw5
+	gdb -q ./hw5
 
 clean:
 #  Implicit rule search has not been done.
+ 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'makefile', line 20):
@@ -348,7 +348,7 @@ run:
 # Not a target:
 makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-05-13 21:52:18.514058293
+#  Last modified 2022-05-14 16:32:19.181255237
 #  File has been updated.
 #  Successfully updated.
 
@@ -373,12 +373,12 @@ run_warning:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 26 / storage = 231 B / avg = 8 B
-# current buf: size = 8162 B / used = 231 B / count = 26 / avg = 8 B
+# strcache buffers: 1 (0) / strings = 26 / storage = 234 B / avg = 9 B
+# current buf: size = 8162 B / used = 234 B / count = 26 / avg = 9 B
 
 # strcache performance: lookups = 38 / hit rate = 31%
 # hash-table stats:
 # Load=26/8192=0%, Rehash=0, Collisions=0/38=0%
-# Finished Make data base on Sat May 14 10:16:32 2022
+# Finished Make data base on Sat May 14 16:32:37 2022
 
  

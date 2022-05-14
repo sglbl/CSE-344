@@ -10,15 +10,19 @@
 
 typedef struct Info {
     int index;
-    int fileDescs[3];
+    int twoToN;
+    char **matrixA;
+    char **matrixB;
 } Info;
 
 int *openFiles(char *filePath1, char *filePath2, char *output);
 
 void readMatrices(int n, int m, int twoToN, int fileDescs[3], char matrixA[][twoToN], char matrixB[][twoToN]);
-
 /* Creates threads */
 void createThreads(int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN][twoToN]);
+
+void putMatrixToInfo(Info info, int twoToN, char matrixA[twoToN][twoToN], char matrixB[twoToN][twoToN]);
+
 /* Thread routine */
 void *threadJob(void *arg);
 /* Posts semaphore */
