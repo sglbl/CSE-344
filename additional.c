@@ -13,14 +13,30 @@
 #include <pthread.h> // Threads and mutexes
 #include "additional.h" // Additional functions
 
-static pthread_mutex_t mutex;
+static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
 static pthread_cond_t barrierCond;
 static int part1FinishedThreads;
 static int N, M;
 static int **matrixC;
 static volatile sig_atomic_t didSigIntCome = 0;
-// çç ascii check
+
+void signalHandlerInitializer(){
+    // Initializing signal action for SIGINT signal.
+    struct sigaction actionForSigInt;
+    memset(&actionForSigInt, 0, sizeof(actionForSigInt)); // Initializing
+    actionForSigInt.sa_handler = mySignalHandler; // Setting the handler function.
+    actionForSigInt.sa_flags = 0; // No flag is set.
+    if (sigaction(SIGINT, &actionForSigInt, NULL) < 0){ // Setting the signal.
+        errorAndExit("Error while setting SIGINT signal. ");
+    }
+}
+
+// Create a signal handler function
+void mySignalHandler(int signalNumber){
+    if( signalNumber == SIGINT)
+        didSigIntCome = 1;   // writing to static volative. If zero make it 1.
+}
 
 int* openFiles(char *filePath1, char *filePath2, char *outputPath){
     int *fileDescs = calloc(3, sizeof(int));
@@ -30,7 +46,6 @@ int* openFiles(char *filePath1, char *filePath2, char *outputPath){
         errorAndExit("Error while opening file from path2");
     if ((fileDescs[2] = open(outputPath, O_RDWR | O_CREAT | O_TRUNC, 0666)) == -1) 
         errorAndExit("Error while opening file from output path");
-    // filePath1 = filePath1, filePath2 = filePath2, outputPath = output;
     return fileDescs;
 }
 
@@ -54,9 +69,10 @@ void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoT
         
         for(int j = 0; j < twoToN; ++j){
             if(buffer1[i][j] < 0 || buffer1[i][j] > 256 || buffer2[i][j] < 0 || buffer2[i][j] > 256){
-                errorAndExit("Fİle contains non-ascii value. Put a valid file ");
+                errorAndExit("File contains non-ascii value. Put a valid file ");
             }
-            matrixA[i][j] = buffer1[i][j];
+            // Char to integer conversion [No need explicit casting]
+            matrixA[i][j] = buffer1[i][j]; 
             matrixB[i][j] = buffer2[i][j];
         }
 
@@ -68,8 +84,8 @@ void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoT
 }
 
 void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
-    // Initializing mutex
-    pthread_mutex_init(&mutex, NULL); 
+    // Initializing mutex and conditional variable
+    pthread_mutex_init(&csMutex, NULL); 
     pthread_mutex_init(&barrierMutex, NULL); 
     pthread_cond_init(&barrierCond, NULL);
     pthread_attr_t attr;
@@ -109,13 +125,13 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
         }
     }
 
-    // Printing stdout matrix C
+    // Printing matrix C to stdout
     matrixPrinter(twoToN, matrixC);
     
 }
 
 void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
-    for(int j = 0; j < twoToN; j++){
+    for(int j = 0; j < twoToN; j++){ //çç free
         info.matrixA[j] = calloc(twoToN, sizeof(int));
         info.matrixB[j] = calloc(twoToN, sizeof(int));
         for(int k = 0; k < twoToN; k++){
@@ -138,14 +154,13 @@ void matrixPrinter(int twoToN, int **matrix){
 
 void *threadJob(void *arg){
     Info *info = arg;
-    // int columnIndex = info->index;
     
     /*  Every thread will calculate the one column of matrix C = matrixA * matrixB
             A           B           C
         [ a b c ]   [ k - - ]   [ x - -]
         [ d e f ] * [ l - - ] = [ y - -]
         [ g h j ]   [ m - - ]   [ z - -]
-        For example 1st thread will calculate the 1st column of matrix C    
+        For example 1st thread will calculate the 1st column (index=0) of matrix C    
         x = a * k + b * l + c * m
         y = d * k + e * l + f * m
         z = g * k + h * l + j * m
@@ -161,19 +176,26 @@ void *threadJob(void *arg){
             matrixC[j][columnIndex] = 0; /* row i, column index */
             for(int k = 0; k < info->twoToN; ++k){
                 // Entering critical section.
-                pthread_mutex_lock(&mutex);
+                pthread_mutex_lock(&csMutex);
                 matrixC[j][columnIndex] += info->matrixA[j][k] * info->matrixB[k][columnIndex];
-                pthread_mutex_unlock(&mutex);
+                pthread_mutex_unlock(&csMutex);
             }
         }
     }
 
-    tprintf("Thread-%d calculated %d columns of matrix C\n", info->index, info->numOfColumnToCalculate);
+    tprintf("Thread %d calculated %d columns of matrix C\n", info->index, info->numOfColumnToCalculate);
 
     // Barrier    
     barrier();
 	double seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
-    tprintf("Thread-%d has reached the rendezvous point in %.5f seconds\n", info->index, seconds);
+    tprintf("Thread %d has reached the rendezvous point in %.5f seconds\n", info->index, seconds);
+
+    // Part2
+    tprintf("Thread %d is advancing to the second part\n", info->index);
+
+
+
+
 
     pthread_exit(NULL);
 }
@@ -215,23 +237,6 @@ void tprintf(const char *restrict formattedStr, ...){
     va_start(argumentList, newFormattedStr);
     vprintf( newFormattedStr, argumentList );
     va_end( argumentList );
-}
-
-void signalHandlerInitializer(){
-    // Initializing signal action for SIGINT signal.
-    struct sigaction actionForSigInt;
-    memset(&actionForSigInt, 0, sizeof(actionForSigInt)); // Initializing
-    actionForSigInt.sa_handler = mySignalHandler; // Setting the handler function.
-    actionForSigInt.sa_flags = 0; // No flag is set.
-    if (sigaction(SIGINT, &actionForSigInt, NULL) < 0){ // Setting the signal.
-        errorAndExit("Error while setting SIGINT signal. ");
-    }
-}
-
-// Create a signal handler function
-void mySignalHandler(int signalNumber){
-    if( signalNumber == SIGINT)
-        didSigIntCome = 1;   // writing to static volative. If zero make it 1.
 }
 
 void errorAndExit(char *errorMessage){
