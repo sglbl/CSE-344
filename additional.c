@@ -17,12 +17,31 @@
 static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
 static pthread_cond_t barrierCond;
+static Info *info;
 static int part1FinishedThreads;
 static int N, M;
 static int **matrixC;
 static int outputFileDesc;
 static double complex **outputMatrix;
 static volatile sig_atomic_t didSigIntCome = 0;
+
+static void exitingJob(){
+    // Freeing allocated memory of info
+    for (int i = 0; i < M; i++){  
+        for(int j = 0; j < pow(2,N); ++j){
+            free(info[i].matrixA[j]);
+            free(info[i].matrixB[j]);
+        }
+        free(info[i].matrixA);
+        free(info[i].matrixB);
+    }
+    free(info);
+
+    // Freeing allocated memory
+    freeAllocatedMemory(pow(2,N)/* Size of matrix row*/);
+    // Closing output file
+    close(outputFileDesc);
+}
 
 void signalHandlerInitializer(){
     // Initializing signal action for SIGINT signal.
@@ -32,6 +51,10 @@ void signalHandlerInitializer(){
     actionForSigInt.sa_flags = 0; // No flag is set.
     if (sigaction(SIGINT, &actionForSigInt, NULL) < 0){ // Setting the signal.
         errorAndExit("Error while setting SIGINT signal. ");
+    }
+    // Also initalizing atexit function.
+    if(atexit(exitingJob) != 0){
+        errorAndExit("Error while setting atexit function. ");
     }
 }
 
@@ -106,9 +129,9 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
     }
 
     /* create info ve allocate place to matrices for m threads */
-    Info info[M];
+    info = calloc(M, sizeof(Info));
     for (int i = 0; i < M; i++){  
-        info[i].index = i;
+        info[i].threadId = i;
         info[i].twoToN = twoToN;
         info[i].numOfColumnToCalculate = twoToN / M;
         info[i].matrixA = calloc(twoToN, sizeof(int*));
@@ -129,14 +152,9 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
         }
     }
 
-    // Freeing allocated memory of info
-    for (int i = 0; i < M; i++){  
-        for(int j = 0; j < twoToN; ++j){
-            free(info[i].matrixA[j]);
-            free(info[i].matrixB[j]);
-        }
-        free(info[i].matrixA);
-        free(info[i].matrixB);
+    if(didSigIntCome == 1 ){
+        write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
+        exit(EXIT_SUCCESS);
     }
 
     writeToCsv(twoToN /* row and column size of square matrix */);
@@ -155,7 +173,7 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
     // }
 
     // Freeing allocated memory of matrix C and output matrix
-    freeAllocatedMemory(twoToN);
+    exit(EXIT_SUCCESS);
 }
 
 void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
@@ -180,7 +198,7 @@ void matrixPrinter(int twoToN, int **matrix){
 }
 
 void *threadJob(void *arg){
-    Info *info = arg;
+    Info *infoArg = arg;
 
     /*  Every thread will calculate the one column of matrix C = matrixA * matrixB
             A           B           C
@@ -196,54 +214,65 @@ void *threadJob(void *arg){
     // Get time difference to find the time taken by each thread
     clock_t timeBegin = clock();
 
-    for(int i = 0; i < info->numOfColumnToCalculate; ++i){
+    for(int i = 0; i < infoArg->numOfColumnToCalculate; ++i){
         // Thread_(info->index) will calculate (info->numOfColumnToCalculate) columns
-        int columnIndex = info->index * info->numOfColumnToCalculate + i;
-        for(int j = 0; j < info->twoToN; ++j){ 
+        int columnIndex = infoArg->threadId * infoArg->numOfColumnToCalculate + i;
+        for(int j = 0; j < infoArg->twoToN; ++j){ 
             matrixC[j][columnIndex] = 0; /* row j, column columnIndex */
-            for(int k = 0; k < info->twoToN; ++k){
+            for(int k = 0; k < infoArg->twoToN; ++k){
                 // Entering critical section.
                 pthread_mutex_lock(&csMutex);
-                matrixC[j][columnIndex] += info->matrixA[j][k] * info->matrixB[k][columnIndex];
+                matrixC[j][columnIndex] += infoArg->matrixA[j][k] * infoArg->matrixB[k][columnIndex];
+                if( didSigIntCome == 1 ){
+                    write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
+                    exit(EXIT_SUCCESS);
+                }
                 pthread_mutex_unlock(&csMutex);
             }
         }
     }
 
-    tprintf("Thread %d calculated %d columns of matrix C\n", info->index, info->numOfColumnToCalculate);
+    tprintf("Thread %d calculated %d columns of matrix C\n", infoArg->threadId, infoArg->numOfColumnToCalculate);
 
     // Barrier    
     barrier();
 	double seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
-    tprintf("Thread %d has reached the rendezvous point in %.5f seconds\n", info->index, seconds);
+    tprintf("Thread %d has reached the rendezvous point in %.5f seconds\n", infoArg->threadId, seconds);
 
     timeBegin = clock();
 
     // Part2
-    tprintf("Thread %d is advancing to the second part\n", info->index);
-    for(int i = 0; i < info->numOfColumnToCalculate; ++i){
-        // Thread_(info->index) will calculate (info->numOfColumnToCalculate) columns
-        int columnIndex = info->index * info->numOfColumnToCalculate + i; 
-        for(int newRow = 0; newRow < info->twoToN; ++newRow){
+    // tprintf("Thread %d is advancing to the second part\n", info->index);
+    for(int i = 0; i < infoArg->numOfColumnToCalculate; ++i){
+        int columnIndex = infoArg->threadId * infoArg->numOfColumnToCalculate + i; 
+        for(int newRow = 0; newRow < infoArg->twoToN; ++newRow){
             // for(int newColumn; newColumn < info->twoToN; ++newColumn)
             // NO NEED TO ITERATE ON COLUMNS LIKE ABOVE. THIS THREAD ONLY CALCULATES "COLUMNINDEX" COLUMNS
             double complex dftIndexValue = 0 + 0 * I;
-            for(int row = 0; row < info->twoToN; ++row){
-                for(int col = 0; col < info->twoToN; ++col){
+            for(int row = 0; row < infoArg->twoToN; ++row){
+                for(int col = 0; col < infoArg->twoToN; ++col){
                     // double complex number = I * (-2 * M_PI * ((newRow * row + newCol * col) / (twoToN*1.0)));
                     // double complex matrixIndexValue = matrixC[row][col] + 0 * I;
                     // dftIndexValue += ( matrixIndexValue * cexp(number));
-                    double radian = ( 2 * M_PI * ( (newRow * row + columnIndex * col)/(info->twoToN*1.0) ) );
+                    double radian = ( 2 * M_PI * ( (newRow * row + columnIndex * col)/(infoArg->twoToN*1.0) ) );
                     dftIndexValue += ( matrixC[row][col] * ccos(radian)) - I * (matrixC[row][col] * csin(radian) );
+                    pthread_mutex_lock(&csMutex); // Don't let other threads to free too.
+                    if( didSigIntCome == 1 ){
+                        write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
+                        exit(EXIT_SUCCESS);
+                    }
+                    pthread_mutex_unlock(&csMutex); // Don't let other threads to free too.
                 }
             }
+            pthread_mutex_lock(&csMutex);
             outputMatrix[newRow][columnIndex] = dftIndexValue;
+            pthread_mutex_unlock(&csMutex);
         }
     
     }
 
     seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
-    tprintf("Thread %d has finished the second part in %.3f seconds. \n", info->index, seconds);
+    tprintf("Thread %d has finished the second part in %.3f seconds. \n", infoArg->threadId, seconds);
     pthread_exit(NULL);
 }
 
@@ -267,6 +296,10 @@ void barrier(){
 
 void freeAllocatedMemory(int twoToN){
     // Freeing allocated memory of matrixC and outputMatrix
+    for(int i = 0; i < M; i++){}
+
+
+    didSigIntCome = 0;
     for(int i = 0; i < twoToN; ++i){
         free(matrixC[i]);
         free(outputMatrix[i]);

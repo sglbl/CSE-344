@@ -9,7 +9,7 @@
 #define FALSE 0
 
 typedef struct Info {
-    int index;
+    int threadId;
     int twoToN;
     int numOfColumnToCalculate;
     int **matrixA;
