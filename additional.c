@@ -85,6 +85,7 @@ void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoT
 }
 
 void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
+    double startTime = clock();
     // Initializing mutex and conditional variable
     pthread_mutex_init(&csMutex, NULL); 
     pthread_mutex_init(&barrierMutex, NULL); 
@@ -138,53 +139,28 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
         free(info[i].matrixB);
     }
 
+    writeToCsv(twoToN /* row and column size of square matrix */);
+
+    tprintf("The process has written the output file. The total time spent is %.3f seconds.\n", (double)(clock() - startTime) / CLOCKS_PER_SEC);
+
     // Printing matrix C to stdout
     // matrixPrinter(twoToN, matrixC);
 
-    writeToCsv(twoToN);
+    // printf("Printing output matrix\n");
+    // for(int i = 0; i < twoToN; ++i){
+    //     for(int j = 0; j < twoToN; ++j){
+    //         printf("%.3f + %.3fi\t", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+    //     }
+    //     printf("\n");
+    // }
 
-    printf("Printing output matrix\n");
-    for(int i = 0; i < twoToN; ++i){
-        for(int j = 0; j < twoToN; ++j){
-            printf("%.3f + %.3fi\t", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
-        }
-        printf("\n");
-    }
-
+    // Freeing allocated memory of matrix C and output matrix
     freeAllocatedMemory(twoToN);
-}
-
-void freeAllocatedMemory(int twoToN){
-    // Freeing allocated memory of matrixC and outputMatrix
-    for(int i = 0; i < twoToN; ++i){
-        free(matrixC[i]);
-        free(outputMatrix[i]);
-    }
-    free(matrixC);
-    free(outputMatrix);
-}
-
-void writeToCsv(int size){
-    // Writing twoToN * twoToN outputMatrix to csv file
-    char buffer[100];
-    for(int i = 0; i < size; ++i){
-        for(int j = 0; j < size; ++j){
-            if(j != size-1) 
-                sprintf(buffer, "%.3f + %.3fi,", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
-            else
-                sprintf(buffer, "%.3f + %.3fi", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
-            if( write(outputFileDesc, buffer, strlen(buffer)) < 0 )
-                errorAndExit("Error while writing to output file");
-        }
-        if( write(outputFileDesc, "\n", 1) < 0 )
-            errorAndExit("Error while writing to output file");
-    }
-
 }
 
 void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
     // Storing matrix inside struct
-    for(int j = 0; j < twoToN; j++){ //çç free
+    for(int j = 0; j < twoToN; j++){
         info.matrixA[j] = calloc(twoToN, sizeof(int));
         info.matrixB[j] = calloc(twoToN, sizeof(int));
         for(int k = 0; k < twoToN; k++){
@@ -241,6 +217,8 @@ void *threadJob(void *arg){
 	double seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
     tprintf("Thread %d has reached the rendezvous point in %.5f seconds\n", info->index, seconds);
 
+    timeBegin = clock();
+
     // Part2
     tprintf("Thread %d is advancing to the second part\n", info->index);
     for(int i = 0; i < info->numOfColumnToCalculate; ++i){
@@ -261,11 +239,11 @@ void *threadJob(void *arg){
             }
             outputMatrix[newRow][columnIndex] = dftIndexValue;
         }
-        
-        // çç structta adres olacak. Output matrix main processte, struct ta onun adresini tutucak.
-
+    
     }
 
+    seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
+    tprintf("Thread %d has finished the second part in %.3f seconds. \n", info->index, seconds);
     pthread_exit(NULL);
 }
 
@@ -284,6 +262,35 @@ void barrier(){
         }
     }
     pthread_mutex_unlock(&barrierMutex);
+}
+
+
+void freeAllocatedMemory(int twoToN){
+    // Freeing allocated memory of matrixC and outputMatrix
+    for(int i = 0; i < twoToN; ++i){
+        free(matrixC[i]);
+        free(outputMatrix[i]);
+    }
+    free(matrixC);
+    free(outputMatrix);
+}
+
+void writeToCsv(int size){
+    // Writing twoToN * twoToN outputMatrix to csv file
+    char buffer[100];
+    for(int i = 0; i < size; ++i){
+        for(int j = 0; j < size; ++j){
+            if(j != size-1) 
+                sprintf(buffer, "%.3f + %.3fi,", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+            else
+                sprintf(buffer, "%.3f + %.3fi", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+            if( write(outputFileDesc, buffer, strlen(buffer)) < 0 )
+                errorAndExit("Error while writing to output file");
+        }
+        if( write(outputFileDesc, "\n", 1) < 0 )
+            errorAndExit("Error while writing to output file");
+    }
+
 }
 
 char *timeStamp(){
