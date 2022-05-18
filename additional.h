@@ -28,6 +28,8 @@ void matrixPrinter(int twoToN, int **matrix);
 
 void barrier();
 
+void writeToCsv(int size);
+
 /* Thread routine */
 void *threadJob(void *arg);
 /* Prints with timestamp */

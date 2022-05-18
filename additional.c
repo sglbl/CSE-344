@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h> // Variadic function
+#include <complex.h> // Complex numbers
 #include <math.h>   // Math functions
 #include <time.h>  // Time stamp
 #include <errno.h> // spesific error message
@@ -19,6 +20,8 @@ static pthread_cond_t barrierCond;
 static int part1FinishedThreads;
 static int N, M;
 static int **matrixC;
+static int outputFileDesc;
+static double complex **outputMatrix;
 static volatile sig_atomic_t didSigIntCome = 0;
 
 void signalHandlerInitializer(){
@@ -76,11 +79,11 @@ void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoT
             matrixB[i][j] = buffer2[i][j];
         }
 
-        tprintf("Row[%d] from file1: %d, Row[%d] from file2: %d\n", i, matrixA[i][0], i, matrixB[i][0]);
+        // tprintf("Row[%d] from file1: %d, Row[%d] from file2: %d\n", i, matrixA[i][0], i, matrixB[i][0]);
     }
     tprintf("Two matrices of size %dx%d have been read. The number of threads is %d\n", twoToN, twoToN, M);
-    close(fileDescs[0]);    close(fileDescs[1]);    close(fileDescs[2]);   // closing file descriptors
-
+    close(fileDescs[0]);    close(fileDescs[1]); // closing file descriptors of readed files
+    outputFileDesc = fileDescs[2];    
 }
 
 void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
@@ -97,8 +100,10 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
 
     // Initializing matrix C
     matrixC = calloc(twoToN, sizeof(int*));
+    outputMatrix = calloc(twoToN, sizeof(double complex*));
     for(int i = 0; i < twoToN; ++i){
         matrixC[i] = calloc(twoToN, sizeof(int));
+        outputMatrix[i] = calloc(twoToN, sizeof(double complex));
     }
 
     /* create info ve allocate place to matrices for m threads */
@@ -126,11 +131,40 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
     }
 
     // Printing matrix C to stdout
-    matrixPrinter(twoToN, matrixC);
-    
+    // matrixPrinter(twoToN, matrixC);
+
+    writeToCsv(twoToN);
+
+    printf("Printing output matrix\n");
+    for(int i = 0; i < twoToN; ++i){
+        for(int j = 0; j < twoToN; ++j){
+            printf("%.3f + %.3fi\t", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+        }
+        printf("\n");
+    }
+   
+}
+
+void writeToCsv(int size){
+    // Writing twoToN * twoToN outputMatrix to csv file
+    char buffer[100];
+    for(int i = 0; i < size; ++i){
+        for(int j = 0; j < size; ++j){
+            if(j != size-1) 
+                sprintf(buffer, "%.3f + %.3fi,", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+            else
+                sprintf(buffer, "%.3f + %.3fi", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+            if( write(outputFileDesc, buffer, strlen(buffer)) < 0 )
+                errorAndExit("Error while writing to output file");
+        }
+        if( write(outputFileDesc, "\n", 1) < 0 )
+            errorAndExit("Error while writing to output file");
+    }
+
 }
 
 void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][twoToN]){
+    // Storing matrix inside struct
     for(int j = 0; j < twoToN; j++){ //çç free
         info.matrixA[j] = calloc(twoToN, sizeof(int));
         info.matrixB[j] = calloc(twoToN, sizeof(int));
@@ -154,7 +188,7 @@ void matrixPrinter(int twoToN, int **matrix){
 
 void *threadJob(void *arg){
     Info *info = arg;
-    
+
     /*  Every thread will calculate the one column of matrix C = matrixA * matrixB
             A           B           C
         [ a b c ]   [ k - - ]   [ x - -]
@@ -170,10 +204,10 @@ void *threadJob(void *arg){
     clock_t timeBegin = clock();
 
     for(int i = 0; i < info->numOfColumnToCalculate; ++i){
-        // Thread_index calculates the indexTh column of matrixC
-        for(int j = 0; j < info->twoToN; ++j){
-            int columnIndex = info->index * info->numOfColumnToCalculate + i;
-            matrixC[j][columnIndex] = 0; /* row i, column index */
+        // Thread_(info->index) will calculate (info->numOfColumnToCalculate) columns
+        int columnIndex = info->index * info->numOfColumnToCalculate + i;
+        for(int j = 0; j < info->twoToN; ++j){ 
+            matrixC[j][columnIndex] = 0; /* row j, column columnIndex */
             for(int k = 0; k < info->twoToN; ++k){
                 // Entering critical section.
                 pthread_mutex_lock(&csMutex);
@@ -192,10 +226,28 @@ void *threadJob(void *arg){
 
     // Part2
     tprintf("Thread %d is advancing to the second part\n", info->index);
+    for(int i = 0; i < info->numOfColumnToCalculate; ++i){
+        // Thread_(info->index) will calculate (info->numOfColumnToCalculate) columns
+        int columnIndex = info->index * info->numOfColumnToCalculate + i; 
+        for(int newRow = 0; newRow < info->twoToN; ++newRow){
+            // for(int newColumn; newColumn < info->twoToN; ++newColumn)
+            // NO NEED TO ITERATE ON COLUMNS LIKE ABOVE. THIS THREAD ONLY CALCULATES "COLUMNINDEX" COLUMNS
+            double complex dftIndexValue = 0 + 0 * I;
+            for(int row = 0; row < info->twoToN; ++row){
+                for(int col = 0; col < info->twoToN; ++col){
+                    // double complex number = I * (-2 * M_PI * ((newRow * row + newCol * col) / (twoToN*1.0)));
+                    // double complex matrixIndexValue = matrixC[row][col] + 0 * I;
+                    // dftIndexValue += ( matrixIndexValue * cexp(number));
+                    double radian = ( 2 * M_PI * ( (newRow * row + columnIndex * col)/(info->twoToN*1.0) ) );
+                    dftIndexValue += ( matrixC[row][col] * ccos(radian)) - I * (matrixC[row][col] * csin(radian) );
+                }
+            }
+            outputMatrix[newRow][columnIndex] = dftIndexValue;
+        }
+        
+        // çç structta adres olacak. Output matrix main processte, struct ta onun adresini tutucak.
 
-
-
-
+    }
 
     pthread_exit(NULL);
 }
