@@ -55,15 +55,14 @@ int main(int argc, char *argv[]){
     }
 
     signalHandlerInitializer();
-    int *fileDescs = openFiles(filePath1, filePath2, outputPath);
+    int fileDescs[3];
+    openFiles(filePath1, filePath2, outputPath, fileDescs);
 
     int twoToN = pow(2,n);
     int matrixA[twoToN][twoToN], matrixB[twoToN][twoToN];
     readMatrices(n, m, twoToN, fileDescs, matrixA, matrixB);
 
     createThreads(twoToN, matrixA, matrixB);
-
-    free(fileDescs);
 
     return 0;
 }

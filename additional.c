@@ -41,15 +41,13 @@ void mySignalHandler(int signalNumber){
         didSigIntCome = 1;   // writing to static volative. If zero make it 1.
 }
 
-int* openFiles(char *filePath1, char *filePath2, char *outputPath){
-    int *fileDescs = calloc(3, sizeof(int));
+void openFiles(char *filePath1, char *filePath2, char *outputPath, int fileDescs[3]){
     if ((fileDescs[0] = open(filePath1, O_RDONLY, S_IRUSR | S_IRGRP | S_IRGRP)) == -1) 
         errorAndExit("Error while opening file from path1");
     if ((fileDescs[1] = open(filePath2, O_RDONLY, S_IRUSR | S_IRGRP | S_IRGRP)) == -1) 
         errorAndExit("Error while opening file from path2");
     if ((fileDescs[2] = open(outputPath, O_RDWR | O_CREAT | O_TRUNC, 0666)) == -1) 
         errorAndExit("Error while opening file from output path");
-    return fileDescs;
 }
 
 void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoToN], int matrixB[][twoToN]){
@@ -130,6 +128,16 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
         }
     }
 
+    // Freeing allocated memory of info
+    for (int i = 0; i < M; i++){  
+        for(int j = 0; j < twoToN; ++j){
+            free(info[i].matrixA[j]);
+            free(info[i].matrixB[j]);
+        }
+        free(info[i].matrixA);
+        free(info[i].matrixB);
+    }
+
     // Printing matrix C to stdout
     // matrixPrinter(twoToN, matrixC);
 
@@ -142,7 +150,18 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
         }
         printf("\n");
     }
-   
+
+    freeAllocatedMemory(twoToN);
+}
+
+void freeAllocatedMemory(int twoToN){
+    // Freeing allocated memory of matrixC and outputMatrix
+    for(int i = 0; i < twoToN; ++i){
+        free(matrixC[i]);
+        free(outputMatrix[i]);
+    }
+    free(matrixC);
+    free(outputMatrix);
 }
 
 void writeToCsv(int size){
@@ -171,10 +190,8 @@ void putMatrixToInfo(Info info, int twoToN, int matrixA[twoToN][twoToN], int mat
         for(int k = 0; k < twoToN; k++){
             info.matrixA[j][k] = matrixA[j][k];
             info.matrixB[j][k] = matrixB[j][k];
-            // tprintf("Pointer is %c\n", info.matrixA[j][k]);
         }
     }
-
 }
 
 void matrixPrinter(int twoToN, int **matrix){
