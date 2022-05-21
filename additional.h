@@ -16,6 +16,11 @@ typedef struct Info {
     int **matrixB;
 } Info;
 
+typedef struct ComplexNumber{
+    double real;
+    double imag;
+} ComplexNumber;
+
 /* Opens files */
 void openFiles(char *filePath1, char *filePath2, char *output, int fileDescs[3]);
 /* Reads matrices */

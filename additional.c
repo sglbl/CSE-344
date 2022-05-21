@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h> // Variadic function
-#include <complex.h> // Complex numbers
 #include <math.h>   // Math functions
 #include <time.h>  // Time stamp
 #include <errno.h> // spesific error message
@@ -17,12 +16,12 @@
 static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
 static pthread_cond_t barrierCond;
+static ComplexNumber **outputMatrix;
 static Info *info;
 static int part1FinishedThreads;
 static int N, M;
 static int **matrixC;
 static int outputFileDesc;
-static double complex **outputMatrix;
 static volatile sig_atomic_t didSigIntCome = 0;
 
 static void exitingJob(){
@@ -121,10 +120,10 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
 
     // Initializing matrix C
     matrixC = calloc(twoToN, sizeof(int*));
-    outputMatrix = calloc(twoToN, sizeof(double complex*));
+    outputMatrix = calloc(twoToN, sizeof(ComplexNumber*));
     for(int i = 0; i < twoToN; ++i){
         matrixC[i] = calloc(twoToN, sizeof(int));
-        outputMatrix[i] = calloc(twoToN, sizeof(double complex));
+        outputMatrix[i] = calloc(twoToN, sizeof(ComplexNumber));
     }
 
     /* create info ve allocate place to matrices for m threads */
@@ -166,14 +165,6 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
 
     // Printing matrix C to stdout
     // matrixPrinter(twoToN, matrixC);
-
-    // printf("Printing output matrix\n");
-    // for(int i = 0; i < twoToN; ++i){
-    //     for(int j = 0; j < twoToN; ++j){
-    //         printf("%.3f + %.3fi\t", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
-    //     }
-    //     printf("\n");
-    // }
 
     // Freeing allocated memory of matrix C and output matrix
     exit(EXIT_SUCCESS);
@@ -242,7 +233,7 @@ void *threadJob(void *arg){
 
     double seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
     tprintf("Thread %d has reached the rendezvous point in %.5f seconds\n", infoArg->threadId, seconds);
-    
+
     // Barrier    
     barrier();
 
@@ -258,15 +249,17 @@ void *threadJob(void *arg){
         for(int newRow = 0; newRow < infoArg->twoToN; ++newRow){
             // for(int newColumn; newColumn < info->twoToN; ++newColumn)
             // NO NEED TO ITERATE ON COLUMNS LIKE ABOVE. THIS THREAD ONLY CALCULATES "COLUMNINDEX" COLUMNS
-            double complex dftIndexValue = 0 + 0 * I;
+            outputMatrix[newRow][columnIndex].real = 0;
+            outputMatrix[newRow][columnIndex].imag = 0;
             for(int row = 0; row < infoArg->twoToN; ++row){
                 for(int col = 0; col < infoArg->twoToN; ++col){
                     // double complex number = I * (-2 * M_PI * ((newRow * row + newCol * col) / (twoToN*1.0)));
                     // double complex matrixIndexValue = matrixC[row][col] + 0 * I;
                     // dftIndexValue += ( matrixIndexValue * cexp(number));
-                    double radian = ( 2 * M_PI * ( (newRow * row + columnIndex * col)/(infoArg->twoToN*1.0) ) );
-                    dftIndexValue += ( matrixC[row][col] * ccos(radian)) - I * (matrixC[row][col] * csin(radian) );
                     pthread_mutex_lock(&csMutex); // Don't let other threads to free too.
+                    double radian = ( 2 * M_PI * ( (newRow * row + columnIndex * col)/(infoArg->twoToN*1.0) ) );
+                    outputMatrix[newRow][columnIndex].real += ( matrixC[row][col] * cos(radian) );
+                    outputMatrix[newRow][columnIndex].imag += ( matrixC[row][col] * sin(radian) );
                     if( didSigIntCome == 1 ){
                         write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
                         exit(EXIT_SUCCESS);
@@ -274,9 +267,6 @@ void *threadJob(void *arg){
                     pthread_mutex_unlock(&csMutex); // Don't let other threads to free too.
                 }
             }
-            pthread_mutex_lock(&csMutex);
-            outputMatrix[newRow][columnIndex] = dftIndexValue;
-            pthread_mutex_unlock(&csMutex);
         }
     
     }
@@ -308,14 +298,13 @@ void freeAllocatedMemory(int twoToN){
     // Freeing allocated memory of matrixC and outputMatrix
     for(int i = 0; i < M; i++){}
 
-
     didSigIntCome = 0;
     for(int i = 0; i < twoToN; ++i){
         free(matrixC[i]);
-        free(outputMatrix[i]);
+        // free(outputMatrix[i]);
     }
     free(matrixC);
-    free(outputMatrix);
+    // free(outputMatrix);
 }
 
 void writeToCsv(int size){
@@ -324,9 +313,9 @@ void writeToCsv(int size){
     for(int i = 0; i < size; ++i){
         for(int j = 0; j < size; ++j){
             if(j != size-1) 
-                sprintf(buffer, "%.3f + %.3fi,", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+                sprintf(buffer, "%.3f + %.3fi,", outputMatrix[i][j].real, outputMatrix[i][j].imag);
             else
-                sprintf(buffer, "%.3f + %.3fi", crealf(outputMatrix[i][j]), cimagf(outputMatrix[i][j]));
+                sprintf(buffer, "%.3f + %.3fi",  outputMatrix[i][j].real, outputMatrix[i][j].imag);
             if( write(outputFileDesc, buffer, strlen(buffer)) < 0 )
                 errorAndExit("Error while writing to output file");
         }
