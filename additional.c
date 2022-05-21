@@ -202,6 +202,7 @@ void matrixPrinter(int twoToN, int **matrix){
 
 void *threadJob(void *arg){
     Info *infoArg = arg;
+    setbuf(stdout, NULL);
 
     /*  Every thread will calculate the some column of matrix C = matrixA * matrixB
         For example if 2^n was 3 (it cannot be, just an example), matrix row and column would become 3
@@ -239,17 +240,16 @@ void *threadJob(void *arg){
         }
     }
 
-    tprintf("Thread %d calculated %d columns of matrix C\n", infoArg->threadId, infoArg->numOfColumnToCalculate);
-
+    double seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
+    tprintf("Thread %d has reached the rendezvous point in %.5f seconds\n", infoArg->threadId, seconds);
+    
     // Barrier    
     barrier();
-	double seconds = (double)(clock() - timeBegin)/CLOCKS_PER_SEC;
-    tprintf("Thread %d has reached the rendezvous point in %.5f seconds\n", infoArg->threadId, seconds);
 
     timeBegin = clock();
 
     // Part2
-    tprintf("Thread %d is advancing to the second part\n", info->threadId);
+    tprintf("Thread %d is advancing to the second part\n", infoArg->threadId);
     for(int i = 0; i < infoArg->numOfColumnToCalculate; ++i){
         int columnIndex = infoArg->threadId * infoArg->numOfColumnToCalculate + i; 
         if(infoArg->threadId == M-1){  // For the remaining columns
