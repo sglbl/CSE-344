@@ -18,7 +18,7 @@ warning:
 clean:
 	rm -f hw5
 
-run_valgrind:
+valgrind:
 	gcc -pthread -Wall *.c -g -lm -o hw5
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./hw5 -i files/file1.txt -j files/file2.txt -o output -n 4 -m 2
 

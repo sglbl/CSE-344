@@ -80,7 +80,6 @@ void readMatrices(int n, int m, int twoToN, int fileDescs[3], int matrixA[][twoT
 
     // Reading from file byte by byte
     for(int i = 0; i < twoToN; ++i){
-        // printf("Supplier thread is reading...\n");
         if( (readByte1 = read(fileDescs[0], buffer1[i], twoToN)) < 0 )
             errorAndExit("Error while reading file1");
         else if(readByte1 == 0)
@@ -134,6 +133,10 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
         info[i].threadId = i;
         info[i].twoToN = twoToN;
         info[i].numOfColumnToCalculate = twoToN / M;
+        if( i == M-1 && twoToN % M != 0 ){
+            // There will be remaining columns so let last thread handle them.
+            info[i].numOfColumnToCalculate = twoToN - (int)((M-1)*floor(twoToN/M));
+        }
         info[i].matrixA = calloc(twoToN, sizeof(int*));
         info[i].matrixB = calloc(twoToN, sizeof(int*));
         putMatrixToInfo(info[i], twoToN, matrixA, matrixB);
@@ -141,7 +144,7 @@ void createThreads(int twoToN, int matrixA[twoToN][twoToN], int matrixB[twoToN][
 
     // Creating m threads
     for (int i = 0; i < M; i++){  
-        if( pthread_create(&threads[i], &attr, threadJob, (void*)&info[i]) != 0 ){ //if returns 0 it's okay.
+        if( pthread_create(&threads[i], &attr, threadJob, (void*)&info[i]) != 0 ){ // if returns 0 it's okay.
             errorAndExit("pthread_create()");
         }
     }
@@ -200,7 +203,8 @@ void matrixPrinter(int twoToN, int **matrix){
 void *threadJob(void *arg){
     Info *infoArg = arg;
 
-    /*  Every thread will calculate the one column of matrix C = matrixA * matrixB
+    /*  Every thread will calculate the some column of matrix C = matrixA * matrixB
+        For example if 2^n was 3 (it cannot be, just an example), matrix row and column would become 3
             A           B           C
         [ a b c ]   [ k - - ]   [ x - -]
         [ d e f ] * [ l - - ] = [ y - -]
@@ -217,6 +221,9 @@ void *threadJob(void *arg){
     for(int i = 0; i < infoArg->numOfColumnToCalculate; ++i){
         // Thread_(info->index) will calculate (info->numOfColumnToCalculate) columns
         int columnIndex = infoArg->threadId * infoArg->numOfColumnToCalculate + i;
+        if(infoArg->threadId == M-1){  // For the remaining columns
+            columnIndex = infoArg->threadId * (infoArg-1)->numOfColumnToCalculate + i; 
+        }
         for(int j = 0; j < infoArg->twoToN; ++j){ 
             matrixC[j][columnIndex] = 0; /* row j, column columnIndex */
             for(int k = 0; k < infoArg->twoToN; ++k){
@@ -242,9 +249,12 @@ void *threadJob(void *arg){
     timeBegin = clock();
 
     // Part2
-    // tprintf("Thread %d is advancing to the second part\n", info->index);
+    tprintf("Thread %d is advancing to the second part\n", info->threadId);
     for(int i = 0; i < infoArg->numOfColumnToCalculate; ++i){
         int columnIndex = infoArg->threadId * infoArg->numOfColumnToCalculate + i; 
+        if(infoArg->threadId == M-1){  // For the remaining columns
+            columnIndex = infoArg->threadId * (infoArg-1)->numOfColumnToCalculate + i; 
+        }
         for(int newRow = 0; newRow < infoArg->twoToN; ++newRow){
             // for(int newColumn; newColumn < info->twoToN; ++newColumn)
             // NO NEED TO ITERATE ON COLUMNS LIKE ABOVE. THIS THREAD ONLY CALCULATES "COLUMNINDEX" COLUMNS
