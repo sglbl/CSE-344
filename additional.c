@@ -301,10 +301,10 @@ void freeAllocatedMemory(int twoToN){
     didSigIntCome = 0;
     for(int i = 0; i < twoToN; ++i){
         free(matrixC[i]);
-        // free(outputMatrix[i]);
+        free(outputMatrix[i]);
     }
     free(matrixC);
-    // free(outputMatrix);
+    free(outputMatrix);
 }
 
 void writeToCsv(int size){
@@ -312,10 +312,18 @@ void writeToCsv(int size){
     char buffer[100];
     for(int i = 0; i < size; ++i){
         for(int j = 0; j < size; ++j){
-            if(j != size-1) 
-                sprintf(buffer, "%.3f + %.3fi,", outputMatrix[i][j].real, outputMatrix[i][j].imag);
-            else
-                sprintf(buffer, "%.3f + %.3fi",  outputMatrix[i][j].real, outputMatrix[i][j].imag);
+            if(j != size-1){
+                if(outputMatrix[i][j].imag < 0)
+                    sprintf(buffer, "%.3f %.3fi,", outputMatrix[i][j].real, outputMatrix[i][j].imag);
+                else
+                    sprintf(buffer, "%.3f + %.3fi,", outputMatrix[i][j].real, outputMatrix[i][j].imag);
+            }
+            else{
+                if(outputMatrix[i][j].imag < 0)
+                    sprintf(buffer, "%.3f %.3fi",  outputMatrix[i][j].real, outputMatrix[i][j].imag);
+                else
+                    sprintf(buffer, "%.3f + %.3fi",  outputMatrix[i][j].real, outputMatrix[i][j].imag);
+            }
             if( write(outputFileDesc, buffer, strlen(buffer)) < 0 )
                 errorAndExit("Error while writing to output file");
         }
