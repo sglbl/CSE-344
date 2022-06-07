@@ -15,9 +15,11 @@ run:
 	./hw5 -i files/file1.txt -j files/file2.txt -o output -n 4 -m 2
 
 debug:
-	gcc -pthread -Wall -g *.c -lm -o hw5
-	gdb -q ./hw5
-# r -i files/file1.txt -j files/file2.txt -o output -n 4 -m 2
+	gcc -pthread -Wall -g src/server.c src/common.c -lm -o bin/server
+	gcc -pthread -Wall -g src/servant.c src/common.c -lm -o bin/servant
+	gcc -pthread -Wall -g src/client.c src/common.c -lm -o bin/client
+	gdb -q ./bin/servant
+# r -d dataset/HATAY -c 1-9 -r 127.0.0.1 -p 33000
 
 
 valgrind:

@@ -83,6 +83,8 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
         if(dir == NULL){
             errorAndExit("Error opening directory\n");
         }
+        SgLinkedList *list = calloc(1, sizeof(SgLinkedList));
+        list->next = NULL;
         while((ent = readdir(dir)) != NULL){
             if(strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0){
                 continue;
@@ -90,19 +92,40 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
             else{
                 char *filePath = malloc(sizeof(char) * (strlen(dirPaths[i]) + strlen(ent->d_name) + 1));
                 strcpy(filePath, dirPaths[i]);
-                // strcat(filePath, "/");
                 strcat(filePath, ent->d_name);
-                printf("filepath is %s\n", filePath);
+                // Adding file to the linked list
+                list = addToLinkedList(list, filePath);
             }
         }
+        printLinkedList(list);
         closedir(dir);
     }
 
+}
 
+SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){
+    SgLinkedList *tempIterator = head;
+    while(tempIterator->next != NULL){
+		tempIterator = tempIterator->next;	
+	}
+	tempIterator->next=(SgLinkedList*)calloc(1, sizeof(SgLinkedList));
+    // int stringLength = strlen(filePath);
+    // tempIterator->string.filePath = calloc(stringLength + 1, sizeof(char));
+    // strncpy(tempIterator->string.filePath, filePath, stringLength);
+    // tempIterator->next->string.length = stringLength + 1;
+    tempIterator->string.filePath = filePath;
+    
+	tempIterator->next->next=NULL;
 
+    return head;
+}
 
-
-
+void printLinkedList(SgLinkedList *iter){
+    printf("(%s) Printing linkedlist values\n", timeStamp());
+    while(iter->next != NULL){
+        printf("%s\n", iter->string.filePath);
+        iter = iter->next;
+    }
 }
 
 static void exitingJob(){
