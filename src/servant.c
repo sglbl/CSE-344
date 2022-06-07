@@ -90,7 +90,7 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
             else{
                 char *filePath = malloc(sizeof(char) * (strlen(dirPaths[i]) + strlen(ent->d_name) + 1));
                 strcpy(filePath, dirPaths[i]);
-                strcat(filePath, "/");
+                // strcat(filePath, "/");
                 strcat(filePath, ent->d_name);
                 printf("filepath is %s\n", filePath);
             }
