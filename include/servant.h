@@ -17,5 +17,8 @@ void signalHandlerInitializer();
 void mySignalHandler(int signalNumber);
 /* Barrier implementation */
 void barrier();
+/* Integer to string */
+char *itoaForAscii(int number);
+
 
 #endif

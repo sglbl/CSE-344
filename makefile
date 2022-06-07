@@ -1,9 +1,12 @@
 target: compile
 
 compile:
-	gcc -pthread -Wall src/server.c src/common.c -lm -o server
-	gcc -pthread -Wall src/servant.c src/common.c -lm -o servant
-	gcc -pthread -Wall src/client.c src/common.c -lm -o client
+	gcc -pthread -Wall src/server.c src/common.c -lm -o bin/server
+	gcc -pthread -Wall src/servant.c src/common.c -lm -o bin/servant
+	gcc -pthread -Wall src/client.c src/common.c -lm -o bin/client
+
+clean:
+	rm -f server servant client
 
 run:
 	gcc -pthread -Wall src/server.c src/common.c -lm -o server
@@ -16,10 +19,6 @@ debug:
 	gdb -q ./hw5
 # r -i files/file1.txt -j files/file2.txt -o output -n 4 -m 2
 
-clean:
-	rm -f server
-	rm -f servant
-	rm -f client
 
 valgrind:
 	gcc -pthread -Wall *.c -g -lm -o hw5
