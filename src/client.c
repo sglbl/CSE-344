@@ -45,11 +45,18 @@ int main(int argc, char *argv[]){
 
     signalHandlerInitializer();
     int requestFd = openRequestFile(filePath);
+
+    // Reading number of lines in the request file by using stat
+    struct stat statOfFile;
+    stat(filePath, &statOfFile);
+    // Buffer will be used to temporarily storing.
+    char *buffer = calloc( statOfFile.st_size , sizeof(char));
+
     // Number of threads will be equal to the number of requests
-    int numberOfThreads = getNumberOfRequests(filePath, requestFd);
+    int numberOfThreads = getNumberOfRequests(statOfFile.st_size, requestFd, buffer);
+    String lineData[numberOfThreads];
+    getRequests(buffer, numberOfThreads, lineData);
     createThreads(portNo, ipv4, requestFd, numberOfThreads);
-
-
 
     return 0;
 }
@@ -61,27 +68,41 @@ int openRequestFile(char *filePath){
     return requestFileFd;
 }
 
-int getNumberOfRequests(char *filePath, int requestFd){
-    // Reading number of lines in the request file by using stat
-    struct stat statOfFile;
-    stat(filePath, &statOfFile);
-    printf("Size is %ld\n", statOfFile.st_size);
+int getNumberOfRequests(int fileSize, int requestFd, char *buffer){
+    if(read(requestFd, buffer, fileSize) < 0)
+        errorAndExit("Error while reading request file");
 
-    lseek(requestFd, 0, SEEK_SET);  
-    char *buffer = calloc( statOfFile.st_size , sizeof(char));   // Buffer that will be used to temporarily storing.
-    // Count number of new lines in file
-    int numberOfLines = 1; // first line
-    for(int i = 0; i < statOfFile.st_size; i++){
-        if(read(requestFd, &buffer[i], 1) < 0)
-            errorAndExit("Error while reading request file");
-        if(buffer[i] == '\n')
+    // READING NUMBER OF LINES/REQUESTS
+    int numberOfLines = 0; // number of lines that contains transaction
+    while(TRUE){
+        char* index;
+        if( (index = strstr(buffer, "transactionCount")) != NULL){ // return a pointer to after found
             numberOfLines++;
+            buffer = index + 16;
+        }else
+            break;
+    }
+    printf("(%s) Number of lines is %d\n", timeStamp(), numberOfLines);
+    return numberOfLines;
+}
+
+String* getRequests(char *buffer, int numberOfRequests, String *lineData){
+    // CREATING ARRAY TO SAVE REQUESTS
+    // String lineData[numberOfRequests];
+
+    // Reading buffer with strtok
+    char *line = strtok(buffer, "\n");
+    printf("line is %s\n", line);
+    for(int i = 0; i < numberOfRequests && line != NULL; i++){
+        // printf("strlen line is %ld\n", strlen(line));
+        printf("line is %s\n", line);
+        lineData[i].data = calloc(strlen(line) + 1, sizeof(char));
+        strncpy(lineData[i].data, line, strlen(line)+1);
+        if(buffer != NULL) line = strtok(NULL, "\n");
     }
 
-    // setting cursor to the beginning of file with lseek / rewinding
-    lseek(requestFd, 0, SEEK_SET);  
-    printf("Number of lines is %d\n", numberOfLines);
-    return numberOfLines;
+    free(buffer);
+    return lineData;
 }
 
 void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads){
@@ -96,13 +117,13 @@ void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads){
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
-    typedef int Info;
-    Info info[numOfThreads];
-    memset(info, 0, sizeof(info));
+    // typedef int Info;
+    // Info info[numOfThreads];
+    // memset(info, 0, sizeof(info));
 
     // Creating threads
     for (int i = 0; i < numOfThreads; i++){  
-        if( pthread_create(&threads[i], &attr, doClientJob, (void*)&info[i]) != 0 ){ // if returns 0 it's okay.
+        if( pthread_create(&threads[i], &attr, doClientJob, (void*)(long)i) != 0 ){ // if returns 0 it's okay.
             errorAndExit("pthread_create()");
         }
     }
@@ -124,7 +145,7 @@ void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads){
 
 void *doClientJob(void *arg){
     // extract struct as char *filePath, int portNo, char *ipv4
-
+    // long i = (long)arg;
 
 
     pthread_exit(NULL);

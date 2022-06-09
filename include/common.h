@@ -18,6 +18,10 @@ typedef struct SgLinkedList{
     struct SgLinkedList *next;
 } SgLinkedList;
 
+SgLinkedList get(SgLinkedList *head, int index);
+
+SgLinkedList addValueToList(SgLinkedList *head, char *value);
+
 /* Returns time stamp */
 char *timeStamp();
 /* Prints error message and exits */

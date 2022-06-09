@@ -4,6 +4,7 @@
 	@author Suleyman Golbol
 	@number 1801042656
 */
+#include "common.h"
 
 /* Opens files */
 void openFiles(char *filePath1, char *filePath2, char *output, int fileDescs[3]);
@@ -18,7 +19,9 @@ void barrier();
 
 int openRequestFile(char *filePath);
 
-int getNumberOfRequests(char *filePath, int requestFd);
+int getNumberOfRequests(int fileSize, int requestFd, char *buffer);
+
+String *getRequests(char *buffer, int numberOfRequests, String *lineData);
 
 void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads);
 
