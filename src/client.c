@@ -14,11 +14,12 @@
 #include "../include/client.h"
 #include "../include/common.h"
 
-static volatile sig_atomic_t didSigIntCome = 0;
 static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
 static pthread_cond_t barrierCond;
 static int s_numOfThreads;
+static int arrivedToRendezvousPoint = 0;
+static volatile sig_atomic_t didSigIntCome = 0;
 
 int main(int argc, char *argv[]){
     setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
@@ -58,6 +59,7 @@ int main(int argc, char *argv[]){
 
     // Number of threads will be equal to the number of requests
     int numberOfThreads = getNumberOfRequests(statOfFile.st_size, requestFd, buffer);
+    s_numOfThreads = numberOfThreads;
     String lineData[s_numOfThreads];
     getRequests(buffer, lineData);
     // printf("linedata[6].data is %s\n", lineData[6].data);
@@ -144,15 +146,19 @@ void *doClientJob(void *arg){
     String *str = arg;
     printf("str is %s\n", str->data);
 
+    barrier();
+
+
+
     pthread_exit(NULL);
 }
 
 void barrier(){
     pthread_mutex_lock(&barrierMutex);
-    ++part1FinishedThreads;
+    ++arrivedToRendezvousPoint;
     while(TRUE){ // Not busy waiting. Using conditional variable + mutex for monitoring
-        if(part1FinishedThreads == s_numOfThreads /* Number of threads */){
-            part1FinishedThreads = 0;
+        if(arrivedToRendezvousPoint == s_numOfThreads /* Number of threads */){
+            arrivedToRendezvousPoint = 0;
             pthread_cond_broadcast(&barrierCond); // signal to all threads to wake them up
             break;
         }
