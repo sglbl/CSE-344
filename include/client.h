@@ -16,13 +16,13 @@ void signalHandlerInitializer();
 void mySignalHandler(int signalNumber);
 /* Barrier implementation */
 void barrier();
-
+/* Opens request file */
 int openRequestFile(char *filePath);
-
+/* Gets number of requests */
 int getNumberOfRequests(int fileSize, int requestFd, char *buffer);
-
-String *getRequests(char *buffer, int numberOfRequests, String *lineData);
-
-void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads);
+/* Gets requests in variable of lineData*/
+void getRequests(char *buffer, int numberOfRequests, String *lineData);
+/* Creates threads */
+void createThreads(int portNo, char *ipv4, int numOfThreads, String *lineData);
 
 #endif

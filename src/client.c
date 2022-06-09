@@ -56,7 +56,8 @@ int main(int argc, char *argv[]){
     int numberOfThreads = getNumberOfRequests(statOfFile.st_size, requestFd, buffer);
     String lineData[numberOfThreads];
     getRequests(buffer, numberOfThreads, lineData);
-    createThreads(portNo, ipv4, requestFd, numberOfThreads);
+    // printf("linedata[6].data is %s\n", lineData[6].data);
+    createThreads(portNo, ipv4, numberOfThreads, lineData);
 
     return 0;
 }
@@ -86,13 +87,9 @@ int getNumberOfRequests(int fileSize, int requestFd, char *buffer){
     return numberOfLines;
 }
 
-String* getRequests(char *buffer, int numberOfRequests, String *lineData){
-    // CREATING ARRAY TO SAVE REQUESTS
-    // String lineData[numberOfRequests];
-
+void getRequests(char *buffer, int numberOfRequests, String *lineData){
     // Reading buffer with strtok
     char *line = strtok(buffer, "\n");
-    printf("line is %s\n", line);
     for(int i = 0; i < numberOfRequests && line != NULL; i++){
         // printf("strlen line is %ld\n", strlen(line));
         printf("line is %s\n", line);
@@ -102,10 +99,9 @@ String* getRequests(char *buffer, int numberOfRequests, String *lineData){
     }
 
     free(buffer);
-    return lineData;
 }
 
-void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads){
+void createThreads(int portNo, char *ipv4, int numOfThreads, String *lineData){
     // Initializing mutex and conditional variable
     // pthread_mutex_init(&csMutex, NULL); 
     // pthread_mutex_init(&barrierMutex, NULL); 
@@ -117,13 +113,9 @@ void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads){
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
-    // typedef int Info;
-    // Info info[numOfThreads];
-    // memset(info, 0, sizeof(info));
-
     // Creating threads
     for (int i = 0; i < numOfThreads; i++){  
-        if( pthread_create(&threads[i], &attr, doClientJob, (void*)(long)i) != 0 ){ // if returns 0 it's okay.
+        if( pthread_create(&threads[i], &attr, doClientJob, (void*)(&lineData[i])) != 0 ){ // if returns 0 it's okay.
             errorAndExit("pthread_create()");
         }
     }
@@ -145,8 +137,8 @@ void createThreads(int portNo, char *ipv4, int fileDesc, int numOfThreads){
 
 void *doClientJob(void *arg){
     // extract struct as char *filePath, int portNo, char *ipv4
-    // long i = (long)arg;
-
+    String *str = arg;
+    printf("str is %s\n", str->data);
 
     pthread_exit(NULL);
 }
