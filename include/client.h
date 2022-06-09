@@ -6,8 +6,11 @@
 */
 #include "common.h"
 
-/* Opens files */
-void openFiles(char *filePath1, char *filePath2, char *output, int fileDescs[3]);
+typedef struct InfoFromClientToServer {
+    int threadId;
+    String lineData;
+} InfoFromClientToServer;
+
 /* Client routine */
 void *doClientJob(void *arg);
 /* Initializes signal handler */
@@ -23,6 +26,6 @@ int getNumberOfRequests(int fileSize, int requestFd, char *buffer);
 /* Gets requests in variable of lineData*/
 void getRequests(char *buffer, String *lineData);
 /* Creates threads */
-void createThreads(int portNo, char *ipv4, String *lineData);
+void createThreads(String *lineData);
 
 #endif

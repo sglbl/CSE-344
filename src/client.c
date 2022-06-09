@@ -17,7 +17,8 @@
 static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
 static pthread_cond_t barrierCond;
-static int s_numOfThreads;
+static int s_numOfThreads, s_portNo;
+static char *s_ipv4;
 static int arrivedToRendezvousPoint = 0;
 static volatile sig_atomic_t didSigIntCome = 0;
 
@@ -60,10 +61,12 @@ int main(int argc, char *argv[]){
     // Number of threads will be equal to the number of requests
     int numberOfThreads = getNumberOfRequests(statOfFile.st_size, requestFd, buffer);
     s_numOfThreads = numberOfThreads;
+    s_portNo = portNo;
+    s_ipv4 = ipv4;
+
     String lineData[s_numOfThreads];
     getRequests(buffer, lineData);
-    // printf("linedata[6].data is %s\n", lineData[6].data);
-    createThreads(portNo, ipv4, lineData);
+    createThreads(lineData);
 
     return 0;
 }
@@ -107,7 +110,7 @@ void getRequests(char *buffer, String *lineData){
     free(buffer);
 }
 
-void createThreads(int portNo, char *ipv4, String *lineData){
+void createThreads(String *lineData){
     // Initializing mutex and conditional variable
     pthread_mutex_init(&csMutex, NULL); 
     pthread_mutex_init(&barrierMutex, NULL); 
@@ -119,9 +122,14 @@ void createThreads(int portNo, char *ipv4, String *lineData){
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
+
+    printf("(%s) Client: I have loaded %d requests and I'm creating %d threads.\n", timeStamp(), s_numOfThreads, s_numOfThreads);
+    InfoFromClientToServer infoFromClientToServer[s_numOfThreads];
     // Creating threads
     for (int i = 0; i < s_numOfThreads; i++){  
-        if( pthread_create(&threads[i], &attr, doClientJob, (void*)(&lineData[i])) != 0 ){ // if returns 0 it's okay.
+        infoFromClientToServer[i].lineData = lineData[i];
+        infoFromClientToServer[i].threadId = i;
+        if( pthread_create(&threads[i], &attr, doClientJob, (void*)(&infoFromClientToServer[i])) != 0 ){ // if returns 0 it's okay.
             errorAndExit("pthread_create()");
         }
     }
@@ -143,10 +151,10 @@ void createThreads(int portNo, char *ipv4, String *lineData){
 
 void *doClientJob(void *arg){
     // extract struct as char *filePath, int portNo, char *ipv4
-    String *str = arg;
-    printf("str is %s\n", str->data);
-
+    InfoFromClientToServer *info = arg; // contains data for request to be sent
+    printf("Client-Thread-%d: Thread-%d has been created\n", info->threadId, info->threadId);
     barrier();
+
 
 
 
