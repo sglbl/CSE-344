@@ -12,7 +12,8 @@ run:
 	gcc -pthread -Wall src/server.c src/common.c -lm -o server
 	gcc -pthread -Wall src/servant.c src/common.c -lm -o servant
 	gcc -pthread -Wall src/client.c src/common.c -lm -o client
-	./hw5 -i files/file1.txt -j files/file2.txt -o output -n 4 -m 2
+# ./bin/servant -d dataset/HATAY -c 1-9 -r 127.0.0.1 -p 33000
+# ./server -p 33000 -t 11
 
 debug:
 	gcc -pthread -Wall -g src/server.c src/common.c -lm -o bin/server

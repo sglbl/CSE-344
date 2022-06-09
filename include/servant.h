@@ -4,16 +4,7 @@
 	@author Suleyman Golbol
 	@number 1801042656
 */
-
-typedef struct String {
-    char *filePath;
-    int length;
-} String;
-
-typedef struct SgLinkedList{
-    String string;
-    struct SgLinkedList *next;
-} SgLinkedList;
+#include "common.h"
 
 /* Servant routine */
 void doServantJob();
@@ -35,5 +26,10 @@ SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath);
 // void freeLinkedList(SgLinkedList *head);
 /* Prints linked list */
 void printLinkedList(SgLinkedList *head);
+
+void connectToTheServer(char *ipv4Adress, int portNo, int head, int tail);
+
+void cityQueueParser(char *citiesToHandle, int *head, int *tail);
+
 
 #endif

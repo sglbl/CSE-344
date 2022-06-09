@@ -16,6 +16,8 @@
 #include "../include/common.h"
 
 static volatile sig_atomic_t didSigIntCome = 0;
+static pthread_mutex_t csMutex;
+int serverSocket;
 
 int main(int argc, char *argv[]){
     setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
@@ -48,27 +50,13 @@ int main(int argc, char *argv[]){
     }
 
     signalHandlerInitializer();
+    pthread_mutex_init(&csMutex, NULL); // Initialize mutex
     doServantJob(dirPath, citiesToHandle, ipv4, portNo);
 
     return 0;
 }
 
 void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int portNo){
-    struct sockaddr_in socketAdress;
-    int socketFd;
-    printf("Creating servant\n");
-    if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        errorAndExit("Socket creation error\n");
-    }
-    
-    socketAdress.sin_family = AF_INET;
-    socketAdress.sin_port = htons(portNo);
- 
-    // Convert IPv4 and IPv6 addresses from text to binary
-    if( inet_pton(AF_INET /*IPv4 type*/, ipv4Adress, &socketAdress.sin_addr) == -1) {
-        errorAndExit("Error! Invalid address.\n");
-    }
-    
     // Open the folders in dataset folder with alphabetic numbers from 10 to 19
     DIR *dir;
     struct dirent *ent;
@@ -78,7 +66,7 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
         dirPaths[i] = malloc(sizeof(char) * (strlen(dirPath) + 2));
         strcpy(dirPaths[i], dirPath);
         strcat(dirPaths[i], "/");
-        printf("dirpa is %s\n", dirPaths[i]);
+        // printf("dirPath is %s\n", dirPaths[i]);
         dir = opendir(dirPaths[i]);
         if(dir == NULL){
             errorAndExit("Error opening directory\n");
@@ -101,9 +89,86 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
         closedir(dir);
     }
 
+    int head = 0, tail = 0;
+    cityQueueParser(citiesToHandle, &head, &tail);
+    printf("Head is %d and tail is %d\n", head, tail);
+    connectToTheServer(ipv4Adress, portNo, head, tail);
+
 }
 
-SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){
+void cityQueueParser(char *citiesToHandle, int *head, int *tail){
+    // String token with :
+    char *token = strtok(citiesToHandle, "-");
+    for(int i = 0; token != NULL; i++){
+        if(i == 0)      *head = atoi(token);
+        else if(i == 1) *tail = atoi(token);
+        token = strtok(NULL, ":");
+    }
+}
+
+void connectToTheServer(char *ipv4Adress, int portNo, int head, int tail){
+    struct sockaddr_in clientAdress = {0};
+    struct sockaddr_in servantAdress = {0};
+
+    socklen_t addresslength;
+
+    printf("(%s) Connecting to the server...\n", timeStamp());
+    struct sockaddr_in servantSocketAdress;
+    int servantSocketFd;
+    if ((servantSocketFd = socket(AF_INET/*ipv4*/, SOCK_STREAM, 0)) == -1) {
+        errorAndExit("Socket creation error\n");
+    }
+    
+    servantSocketAdress.sin_family = AF_INET;
+    servantSocketAdress.sin_port = htons(portNo);
+ 
+    // Ip to binary
+    if( inet_pton(AF_INET /*IPv4 type*/, ipv4Adress, &servantSocketAdress.sin_addr) == -1) {
+        errorAndExit("Error! Invalid address.\n");
+    }
+
+    if ((bind(servantSocketFd, (struct sockaddr *)&servantSocketAdress, sizeof(servantSocketAdress))) == -1)
+        errorAndExit("Bind error");
+
+    if ((listen(servantSocketFd, 256/*256 connections will be queued*/)) == -1)
+        errorAndExit("Listen error");
+
+    /*--------------Main loop-------------------------------*/
+    // Handle connections while no SIGINT
+    while (TRUE){
+        addresslength = sizeof(clientAdress);
+        // printf("Busy waiting checker\n"); // Not busy waiting because waits until get accepted.
+        if( (serverSocket = accept(servantSocketFd, (struct sockaddr *)&servantAdress, &addresslength)) < 0){
+            errorAndExit("Accept error\n");
+        }
+        if (serverSocket > 0){
+            // Add request to jobs 
+            // pthread_mutex_lock(&csMutex);
+            // add_request(serverSocket);
+            printf("Accepted\n\n");
+            // Sending head and tail information
+            if(send(serverSocket, &head, sizeof(int), 0) == -1){
+                errorAndExit("Error sending head\n");
+            }
+            if(send(serverSocket, &tail, sizeof(int), 0) == -1){
+                errorAndExit("Error sending tail\n");
+            }
+            ++portNo;
+            if(send(serverSocket, &portNo, sizeof(int), 0) == -1){
+                errorAndExit("Error sending tail\n");
+            }
+            
+            // pthread_mutex_unlock(&csMutex);
+            // pthread_cond_signal(&cond_job); // Signal new job
+        }
+    }
+
+    close(serverSocket);
+
+
+}
+
+SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){ //çço1
     SgLinkedList *tempIterator = head;
     while(tempIterator->next != NULL){
 		tempIterator = tempIterator->next;	
@@ -113,8 +178,8 @@ SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){
     // tempIterator->string.filePath = calloc(stringLength + 1, sizeof(char));
     // strncpy(tempIterator->string.filePath, filePath, stringLength);
     // tempIterator->next->string.length = stringLength + 1;
-    tempIterator->string.filePath = filePath;
-    
+    tempIterator->string.data = filePath;
+
 	tempIterator->next->next=NULL;
 
     return head;
@@ -123,7 +188,7 @@ SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){
 void printLinkedList(SgLinkedList *iter){
     printf("(%s) Printing linkedlist values\n", timeStamp());
     while(iter->next != NULL){
-        printf("%s\n", iter->string.filePath);
+        printf("(%s) %s\n", timeStamp(), iter->string.data);
         iter = iter->next;
     }
 }

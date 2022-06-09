@@ -20,4 +20,8 @@ void mySignalHandler(int signalNumber);
 /* Barrier implementation */
 void barrier();
 
+void createSocketInfo(int portNo); // creates socket info as like client
+
+void getSocketInfoFromServant(int portNo); // gets info from servant
+
 #endif

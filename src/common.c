@@ -26,6 +26,6 @@ char *timeStamp(){
 
 void errorAndExit(char *errorMessage){
     // perror(errorMessage);
-    dprintf(STDERR_FILENO, "(%s) %s %s\n", timeStamp(), errorMessage, strerror(errno));
+    dprintf(STDERR_FILENO, "(%s) %s: %s\n", timeStamp(), errorMessage, strerror(errno));
     exit(EXIT_FAILURE);
 }

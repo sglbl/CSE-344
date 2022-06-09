@@ -10,6 +10,8 @@
 #include <sys/stat.h> // Stat command
 #include <signal.h> // Signal handling
 #include <pthread.h> // Threads and mutexes
+#include <dirent.h> // Directory and file
+#include <arpa/inet.h> // Parser for ip adress
 #include "../include/server.h"
 #include "../include/common.h"
 
@@ -47,9 +49,46 @@ int main(int argc, char *argv[]){
     // int fileDescs[3];
     // openFiles(filePath1, filePath2, outputPath, fileDescs);
     numOfThreads = noOfThreads;
-    createThreads(portNo);
+    getSocketInfoFromServant(portNo);
+    // createThreads(portNo);
 
     return 0;
+}
+
+void getSocketInfoFromServant(int portNo){
+    // Create socket
+    int serverSocketFdToGetFromServant;
+    if((serverSocketFdToGetFromServant = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        errorAndExit("Error creating socket");
+    }
+
+    // Connecting to socket of servant
+    struct sockaddr_in serverSocketInfo;
+    serverSocketInfo.sin_family = AF_INET;
+    serverSocketInfo.sin_port = htons(portNo);
+    serverSocketInfo.sin_addr.s_addr = INADDR_ANY;
+    if(connect(serverSocketFdToGetFromServant, (struct sockaddr *)&serverSocketInfo, sizeof(serverSocketInfo)) < 0){
+        errorAndExit("Error connecting to socket");
+    }
+    else{
+        printf("Success\n");
+        // Receiving head and tail information from servant 
+        // (Which sub-dataset it is responsible for)
+        int head, tail, portNoToConnectTo;
+        if(recv(serverSocketFdToGetFromServant, &head, sizeof(int), 0) < 0){
+            errorAndExit("Error receiving head");
+        }
+        if(recv(serverSocketFdToGetFromServant, &tail, sizeof(int), 0) < 0){
+            errorAndExit("Error receiving tail");
+        }
+        // get from which port number the server can connect to this servant after.
+        if(recv(serverSocketFdToGetFromServant, &portNoToConnectTo, sizeof(int), 0) < 0){
+            errorAndExit("Error receiving port number");
+        }
+
+        printf("Head: %d, Tail: %d, portNoToConnect %d\n", head, tail, portNoToConnectTo);
+    }
+
 }
 
 static void exitingJob(){
