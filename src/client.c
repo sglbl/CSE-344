@@ -15,6 +15,9 @@
 #include "../include/common.h"
 
 static volatile sig_atomic_t didSigIntCome = 0;
+static pthread_mutex_t csMutex;
+static pthread_mutex_t barrierMutex;
+static pthread_cond_t barrierCond;
 
 int main(int argc, char *argv[]){
     setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
@@ -103,9 +106,9 @@ void getRequests(char *buffer, int numberOfRequests, String *lineData){
 
 void createThreads(int portNo, char *ipv4, int numOfThreads, String *lineData){
     // Initializing mutex and conditional variable
-    // pthread_mutex_init(&csMutex, NULL); 
-    // pthread_mutex_init(&barrierMutex, NULL); 
-    // pthread_cond_init(&barrierCond, NULL);
+    pthread_mutex_init(&csMutex, NULL); 
+    pthread_mutex_init(&barrierMutex, NULL); 
+    pthread_cond_init(&barrierCond, NULL);
     pthread_attr_t attr;
     pthread_t threads[numOfThreads];
 
