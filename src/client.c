@@ -18,6 +18,7 @@ static volatile sig_atomic_t didSigIntCome = 0;
 static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
 static pthread_cond_t barrierCond;
+static int s_numOfThreads;
 
 int main(int argc, char *argv[]){
     setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
@@ -57,10 +58,10 @@ int main(int argc, char *argv[]){
 
     // Number of threads will be equal to the number of requests
     int numberOfThreads = getNumberOfRequests(statOfFile.st_size, requestFd, buffer);
-    String lineData[numberOfThreads];
-    getRequests(buffer, numberOfThreads, lineData);
+    String lineData[s_numOfThreads];
+    getRequests(buffer, lineData);
     // printf("linedata[6].data is %s\n", lineData[6].data);
-    createThreads(portNo, ipv4, numberOfThreads, lineData);
+    createThreads(portNo, ipv4, lineData);
 
     return 0;
 }
@@ -90,10 +91,10 @@ int getNumberOfRequests(int fileSize, int requestFd, char *buffer){
     return numberOfLines;
 }
 
-void getRequests(char *buffer, int numberOfRequests, String *lineData){
+void getRequests(char *buffer, String *lineData){
     // Reading buffer with strtok
     char *line = strtok(buffer, "\n");
-    for(int i = 0; i < numberOfRequests && line != NULL; i++){
+    for(int i = 0; i < s_numOfThreads && line != NULL; i++){
         // printf("strlen line is %ld\n", strlen(line));
         printf("line is %s\n", line);
         lineData[i].data = calloc(strlen(line) + 1, sizeof(char));
@@ -104,26 +105,26 @@ void getRequests(char *buffer, int numberOfRequests, String *lineData){
     free(buffer);
 }
 
-void createThreads(int portNo, char *ipv4, int numOfThreads, String *lineData){
+void createThreads(int portNo, char *ipv4, String *lineData){
     // Initializing mutex and conditional variable
     pthread_mutex_init(&csMutex, NULL); 
     pthread_mutex_init(&barrierMutex, NULL); 
     pthread_cond_init(&barrierCond, NULL);
     pthread_attr_t attr;
-    pthread_t threads[numOfThreads];
+    pthread_t threads[s_numOfThreads];
 
     // set global thread attributes
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
     // Creating threads
-    for (int i = 0; i < numOfThreads; i++){  
+    for (int i = 0; i < s_numOfThreads; i++){  
         if( pthread_create(&threads[i], &attr, doClientJob, (void*)(&lineData[i])) != 0 ){ // if returns 0 it's okay.
             errorAndExit("pthread_create()");
         }
     }
 
-    for(int i = 0; i < numOfThreads; i++){
+    for(int i = 0; i < s_numOfThreads; i++){
         if( pthread_join(threads[i], NULL) != 0 ){
             errorAndExit("pthread_join()");
         }
@@ -144,6 +145,23 @@ void *doClientJob(void *arg){
     printf("str is %s\n", str->data);
 
     pthread_exit(NULL);
+}
+
+void barrier(){
+    pthread_mutex_lock(&barrierMutex);
+    ++part1FinishedThreads;
+    while(TRUE){ // Not busy waiting. Using conditional variable + mutex for monitoring
+        if(part1FinishedThreads == s_numOfThreads /* Number of threads */){
+            part1FinishedThreads = 0;
+            pthread_cond_broadcast(&barrierCond); // signal to all threads to wake them up
+            break;
+        }
+        else{
+            pthread_cond_wait(&barrierCond, &barrierMutex);
+            break;
+        }
+    }
+    pthread_mutex_unlock(&barrierMutex);
 }
 
 static void exitingJob(){
@@ -170,3 +188,4 @@ void mySignalHandler(int signalNumber){
     if( signalNumber == SIGINT)
         didSigIntCome = 1;   // writing to static volative. If zero make it 1.
 }
+

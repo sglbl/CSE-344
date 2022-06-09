@@ -21,8 +21,8 @@ int openRequestFile(char *filePath);
 /* Gets number of requests */
 int getNumberOfRequests(int fileSize, int requestFd, char *buffer);
 /* Gets requests in variable of lineData*/
-void getRequests(char *buffer, int numberOfRequests, String *lineData);
+void getRequests(char *buffer, String *lineData);
 /* Creates threads */
-void createThreads(int portNo, char *ipv4, int numOfThreads, String *lineData);
+void createThreads(int portNo, char *ipv4, String *lineData);
 
 #endif
