@@ -157,7 +157,7 @@ void *doClientJob(void *arg){
     barrier();
 
     printf("(%s) Client-Thread-%d: I am requesting \"/%s\"\n", timeStamp(), info->threadId, info->lineData.data);
-    tcpCommWithServer(info->lineData.data, info->threadId);
+    clientTcpCommWithServer(info->lineData.data, info->threadId);
 
     return NULL;
 }
@@ -179,7 +179,7 @@ void barrier(){
     pthread_mutex_unlock(&barrierMutex);
 }
 
-void tcpCommWithServer(char *data, int threadNo){
+void clientTcpCommWithServer(char *data, int threadNo){
     // Create socket
     int serverSocketFd, clientSocketFd;
     if((serverSocketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -215,7 +215,7 @@ void tcpCommWithServer(char *data, int threadNo){
 
         // printf("(%s) Client: Data sent\n", timeStamp());
     }
-    s_clientSocketFd = clientSocketFd;
+    s_clientSocketFd = clientSocketFd; //çç to close
     // close(clientSocketFd);
 }
 

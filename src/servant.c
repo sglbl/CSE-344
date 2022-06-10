@@ -63,32 +63,51 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
     int head = 0, tail = 0;
     cityQueueParser(citiesToHandle, &head, &tail);
 
-    SgLinkedList *list = calloc(1, sizeof(SgLinkedList));
-    list->next = NULL;
+    SgCityLinkedList *cityList = calloc(1, sizeof(SgCityLinkedList));
+    cityList->next = NULL;
 
+    // Reading province names from the dataset folder
     struct dirent **allTheEntities;
     int readed;
     if((readed = scandir(dirPath, &allTheEntities, NULL, alphasort)) < 0)
         errorAndExit("scandir error while searching for directories");
-    printf("Found %d directories\n", readed);
+    // printf("Found %d directories\n", readed);
     for(int i = 0; i < readed; ++i){
-        printf("Found %s\n", allTheEntities[i]->d_name);
         if(i - 1 >= head && i - 1 <= tail){
-            list = addToLinkedList(list, allTheEntities[i]->d_name);
-            printf("Added %s to list\n", allTheEntities[i]->d_name);
+            cityList = addCityToLinkedList(cityList, allTheEntities[i]->d_name);
+            // printf("Added %s to list\n", allTheEntities[i]->d_name);
         }
         free(allTheEntities[i]);
     }
     free(allTheEntities);
-    // while (n--){
-    //     printf("%s\n", allTheEntities[n]->d_name);
-    //     free(allTheEntities[n]);
-    // }
-    // free(allTheEntities);
-    
 
-    // DIR *dir;
-    // struct dirent *ent;
+
+    // Reading inside of the province folders
+    DIR *dir;
+    struct dirent *ent;
+    SgCityLinkedList *cityIter = cityList;
+
+    while(cityIter != NULL && cityIter->cityName.data != NULL){
+        cityIter->transactions = calloc(1, sizeof(SgLinkedList));
+        cityIter->transactions->next = NULL;
+        // printf("iter->data (city name): %s\n", cityIter->cityName.data);
+
+        char *cityDirPath = malloc(strlen(dirPath) + strlen(cityIter->cityName.data) + 2);
+        strcpy(cityDirPath, dirPath);
+        strcat(cityDirPath, "/");
+        strcat(cityDirPath, cityIter->cityName.data);
+        
+        if((dir = opendir(cityDirPath)) == NULL)
+            errorAndExit("opendir error while opening directory");
+        while((ent = readdir(dir)) != NULL){
+            if(strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0){
+                // printf("entDname %s\n", ent->d_name);
+                cityIter->transactions = addTransactionToLinkedList(cityIter->transactions, ent->d_name);
+            }
+        }
+        closedir(dir);
+        cityIter = cityIter->next;
+    }
 
     // dir = opendir(dirPath[i]);
     // if(dir == NULL){
@@ -112,10 +131,9 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
     // }
     // closedir(dir);
 
-    printLinkedList(list);
+    printCityLinkedList(cityList);
     printf("Head is %d and tail is %d\n", head, tail);
-    connectToTheServer(ipv4Adress, portNo, head, tail);
-
+    servantTcpCommWithServer(ipv4Adress, portNo, head, tail);
 }
 
 void cityQueueParser(char *citiesToHandle, int *head, int *tail){
@@ -128,81 +146,90 @@ void cityQueueParser(char *citiesToHandle, int *head, int *tail){
     }
 }
 
-void connectToTheServer(char *ipv4Adress, int portNo, int head, int tail){
-    struct sockaddr_in clientAdress = {0};
-    struct sockaddr_in servantAdress = {0};
-
-    socklen_t addresslength;
-
-    printf("(%s) Connecting to the server...\n", timeStamp());
-    struct sockaddr_in servantSocketAdress;
-    int servantSocketFd;
-    if ((servantSocketFd = socket(AF_INET/*ipv4*/, SOCK_STREAM, 0)) == -1) {
-        errorAndExit("Socket creation error\n");
-    }
-    
-    servantSocketAdress.sin_family = AF_INET;
-    servantSocketAdress.sin_port = htons(portNo);
- 
-    // Ip to binary
-    if( inet_pton(AF_INET /*IPv4 type*/, ipv4Adress, &servantSocketAdress.sin_addr) == -1) {
-        errorAndExit("Error! Invalid address.\n");
+void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail){
+    // Create socket
+    int serverSocketFd, servantSocketFd;
+    if((serverSocketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        errorAndExit("Error creating socket");
     }
 
-    if ((bind(servantSocketFd, (struct sockaddr *)&servantSocketAdress, sizeof(servantSocketAdress))) == -1)
-        errorAndExit("Bind error");
+    // Connecting to socket of servant
+    struct sockaddr_in serverSocketAdressInfo;
+    serverSocketAdressInfo.sin_family = AF_INET;
+    serverSocketAdressInfo.sin_port = htons(portNo);
+    // serverSocketAdressInfo.sin_addr.s_addr = INADDR_ANY;
 
-    if ((listen(servantSocketFd, 256/*256 connections will be queued*/)) == -1)
-        errorAndExit("Listen error");
+    if( (servantSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0)
+        errorAndExit("Error connecting to socket");
+    if (inet_pton(AF_INET, ipv4Adress, &serverSocketAdressInfo.sin_addr) <= 0) 
+        errorAndExit("Inet pton error with ip adress.\n");
 
-    /*--------------Main loop-------------------------------*/
-    // Handle connections while no SIGINT
     while (TRUE){
-        addresslength = sizeof(clientAdress);
-        // printf("Busy waiting checker\n"); // Not busy waiting because waits until get accepted.
-        if( (serverSocket = accept(servantSocketFd, (struct sockaddr *)&servantAdress, &addresslength)) < 0){
-            errorAndExit("Accept error\n");
+        int iAmServant = SERVANT;
+        if(send(serverSocketFd, &iAmServant, sizeof(int), 0) == -1){
+            errorAndExit("Error sending client info\n");
         }
-        if (serverSocket > 0){
-            // Add request to jobs 
-            // pthread_mutex_lock(&csMutex);
-            // add_request(serverSocket);
-            printf("Accepted\n\n");
-            // Sending head and tail information
-            if(send(serverSocket, &head, sizeof(int), 0) == -1){
-                errorAndExit("Error sending head\n");
-            }
-            if(send(serverSocket, &tail, sizeof(int), 0) == -1){
-                errorAndExit("Error sending tail\n");
-            }
-            ++portNo;
-            if(send(serverSocket, &portNo, sizeof(int), 0) == -1){
-                errorAndExit("Error sending tail\n");
-            }
-            
-            // pthread_mutex_unlock(&csMutex);
-            // pthread_cond_signal(&cond_job); // Signal new job
+        int dataSize = 5;
+        if(send(serverSocketFd, &dataSize, sizeof(int), 0) == -1){
+            errorAndExit("Error sending data size\n");
+        }
+        // if(send(serverSocketFd, data, dataSize, 0) == -1){
+        //     errorAndExit("Error sending data\n");
+        // }
+        pthread_mutex_unlock(&csMutex);
+        int response;
+        if(recv(serverSocketFd, &response, sizeof(int), 0) < 0){
+            errorAndExit("Error receiving head information");
         }
     }
 
     close(serverSocket);
 }
 
-SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){ //çço1
+SgCityLinkedList *addCityToLinkedList(SgCityLinkedList *head, char *cityName){
+    SgCityLinkedList *tempIterator = head;
+    while(tempIterator->next != NULL){
+		tempIterator = tempIterator->next;	
+	}
+	tempIterator->next=(SgCityLinkedList*)calloc(1, sizeof(SgCityLinkedList));
+    int stringLength = strlen(cityName);
+    tempIterator->cityName.data = calloc(stringLength + 1, sizeof(char));
+    strncpy(tempIterator->cityName.data, cityName, stringLength);
+    // tempIterator->string.data = filePath;
+    // printf("Filepath is %s\n", filePath);
+
+	tempIterator->next->next=NULL;
+
+    return head;
+}
+
+SgLinkedList *addTransactionToLinkedList(SgLinkedList *head, char *transaction){
     SgLinkedList *tempIterator = head;
     while(tempIterator->next != NULL){
 		tempIterator = tempIterator->next;	
 	}
 	tempIterator->next=(SgLinkedList*)calloc(1, sizeof(SgLinkedList));
-    int stringLength = strlen(filePath);
+    int stringLength = strlen(transaction);
     tempIterator->string.data = calloc(stringLength + 1, sizeof(char));
-    strncpy(tempIterator->string.data, filePath, stringLength);
+    strncpy(tempIterator->string.data, transaction, stringLength);
     // tempIterator->string.data = filePath;
-    printf("Filepath is %s\n", filePath);
+    // printf("Filepath is %s\n", filePath);
 
 	tempIterator->next->next=NULL;
 
     return head;
+}
+
+void printCityLinkedList(SgCityLinkedList *iter){
+    printf("(%s) Printing linkedlist values\n", timeStamp());
+    while(iter->next != NULL){
+        printf("(%s) %s\n", timeStamp(), iter->cityName.data);
+        while(iter->transactions->next != NULL){
+            printf("(%s) %s\n", timeStamp(), iter->transactions->string.data);
+            iter->transactions = iter->transactions->next;
+        }
+        iter = iter->next;
+    }
 }
 
 void printLinkedList(SgLinkedList *iter){

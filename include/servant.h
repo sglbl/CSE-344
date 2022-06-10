@@ -6,6 +6,12 @@
 */
 #include "common.h"
 
+typedef struct SgCityLinkedList{
+    String cityName;
+    SgLinkedList *transactions;
+    struct SgCityLinkedList *next;
+} SgCityLinkedList;
+
 /* Servant routine */
 void doServantJob();
 /* Creates threads */
@@ -21,15 +27,18 @@ void barrier();
 /* Integer to string */
 char *itoaForAscii(int number);
 /* Adds value to linked list */
-SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath);
-/* Frees linked list */
-// void freeLinkedList(SgLinkedList *head);
+SgLinkedList *addTransactionToLinkedList(SgLinkedList *head, char *transaction);
+/* Adds city to linked list */
+SgCityLinkedList *addCityToLinkedList(SgCityLinkedList *head, char *cityName);
 /* Prints linked list */
 void printLinkedList(SgLinkedList *head);
+/* Prints city list */
+void printCityLinkedList(SgCityLinkedList *head);
 /* COnnects to server with socket*/
-void connectToTheServer(char *ipv4Adress, int portNo, int head, int tail);
+void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail);
 /* City queue parser ; eg: 1-9 will parse to head=1, tail=9 */
 void cityQueueParser(char *citiesToHandle, int *head, int *tail);
-
+/* Frees linked list */
+// void freeLinkedList(SgLinkedList *head);
 
 #endif
