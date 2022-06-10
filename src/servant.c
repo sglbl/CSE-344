@@ -58,39 +58,61 @@ int main(int argc, char *argv[]){
 
 void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int portNo){
     // Open the folders in dataset folder with alphabetic numbers from 10 to 19
-    DIR *dir;
-    struct dirent *ent;
-    char *dirPaths[20];
-    int i = 0;
-    for(i = 0; i < 20; i++){
-        dirPaths[i] = malloc(sizeof(char) * (strlen(dirPath) + 2));
-        strcpy(dirPaths[i], dirPath);
-        strcat(dirPaths[i], "/");
-        // printf("dirPath is %s\n", dirPaths[i]);
-        dir = opendir(dirPaths[i]);
-        if(dir == NULL){
-            errorAndExit("Error opening directory\n");
-        }
-        SgLinkedList *list = calloc(1, sizeof(SgLinkedList));
-        list->next = NULL;
-        while((ent = readdir(dir)) != NULL){
-            if(strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0){
-                continue;
-            }
-            else{
-                char *filePath = malloc(sizeof(char) * (strlen(dirPaths[i]) + strlen(ent->d_name) + 1));
-                strcpy(filePath, dirPaths[i]);
-                strcat(filePath, ent->d_name);
-                // Adding file to the linked list
-                list = addToLinkedList(list, filePath);
-            }
-        }
-        printLinkedList(list);
-        closedir(dir);
-    }
 
+    printf("Servant is working on %s\n", dirPath);
     int head = 0, tail = 0;
     cityQueueParser(citiesToHandle, &head, &tail);
+
+    SgLinkedList *list = calloc(1, sizeof(SgLinkedList));
+    list->next = NULL;
+
+    struct dirent **allTheEntities;
+    int readed;
+    if((readed = scandir(dirPath, &allTheEntities, NULL, alphasort)) < 0)
+        errorAndExit("scandir error while searching for directories");
+    printf("Found %d directories\n", readed);
+    for(int i = 0; i < readed; ++i){
+        printf("Found %s\n", allTheEntities[i]->d_name);
+        if(i - 1 >= head && i - 1 <= tail){
+            list = addToLinkedList(list, allTheEntities[i]->d_name);
+            printf("Added %s to list\n", allTheEntities[i]->d_name);
+        }
+        free(allTheEntities[i]);
+    }
+    free(allTheEntities);
+    // while (n--){
+    //     printf("%s\n", allTheEntities[n]->d_name);
+    //     free(allTheEntities[n]);
+    // }
+    // free(allTheEntities);
+    
+
+    // DIR *dir;
+    // struct dirent *ent;
+
+    // dir = opendir(dirPath[i]);
+    // if(dir == NULL){
+    //     errorAndExit("Error opening directory\n");
+    // }
+    // SgLinkedList *list = calloc(1, sizeof(SgLinkedList));
+    // list->next = NULL;
+    // while((ent = readdir(dir)) != NULL){
+    //     // If finds current folder or parent folder, skip it
+        
+    //     if(strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0){
+    //         continue;
+    //     }
+    //     else{
+    //         char *filePath = malloc(sizeof(char) * (strlen(dirPaths[i]) + strlen(ent->d_name) + 1));
+    //         strcpy(filePath, dirPaths[i]);
+    //         strcat(filePath, ent->d_name);
+    //         // Adding file to the linked list
+    //         list = addToLinkedList(list, filePath);
+    //     }
+    // }
+    // closedir(dir);
+
+    printLinkedList(list);
     printf("Head is %d and tail is %d\n", head, tail);
     connectToTheServer(ipv4Adress, portNo, head, tail);
 
@@ -164,8 +186,6 @@ void connectToTheServer(char *ipv4Adress, int portNo, int head, int tail){
     }
 
     close(serverSocket);
-
-
 }
 
 SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){ //çço1
@@ -174,11 +194,11 @@ SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath){ //çço1
 		tempIterator = tempIterator->next;	
 	}
 	tempIterator->next=(SgLinkedList*)calloc(1, sizeof(SgLinkedList));
-    // int stringLength = strlen(filePath);
-    // tempIterator->string.filePath = calloc(stringLength + 1, sizeof(char));
-    // strncpy(tempIterator->string.filePath, filePath, stringLength);
-    // tempIterator->next->string.length = stringLength + 1;
-    tempIterator->string.data = filePath;
+    int stringLength = strlen(filePath);
+    tempIterator->string.data = calloc(stringLength + 1, sizeof(char));
+    strncpy(tempIterator->string.data, filePath, stringLength);
+    // tempIterator->string.data = filePath;
+    printf("Filepath is %s\n", filePath);
 
 	tempIterator->next->next=NULL;
 
