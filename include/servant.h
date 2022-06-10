@@ -50,6 +50,8 @@ void printDateLinkedList(SgCityLinkedList *iter);
 void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail);
 /* City queue parser ; eg: 1-9 will parse to head=1, tail=9 */
 void cityQueueParser(char *citiesToHandle, int *head, int *tail);
+/* Returns pid of current process */
+int getPidWithProp();
 /* Frees linked list */
 // void freeLinkedList(SgLinkedList *head);
 

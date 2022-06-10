@@ -12,6 +12,7 @@
 #include <pthread.h> // Threads and mutexes
 #include <dirent.h> // Directory and file
 #include <arpa/inet.h> // Parser for ip adress
+#include <sys/procfs.h> // Process information
 #include "../include/servant.h"
 #include "../include/common.h"
 
@@ -161,29 +162,37 @@ void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail){
         errorAndExit("Error creating socket");
     }
 
+    int procId = getPidWithProp();
+    // printf("procId: %d\n", procId);
+
     // Connecting to socket of servant
     struct sockaddr_in serverSocketAdressInfo;
     serverSocketAdressInfo.sin_family = AF_INET;
     serverSocketAdressInfo.sin_port = htons(portNo);
     // serverSocketAdressInfo.sin_addr.s_addr = INADDR_ANY;
-
-    if( (servantSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0)
-        errorAndExit("Error connecting to socket");
     if (inet_pton(AF_INET, ipv4Adress, &serverSocketAdressInfo.sin_addr) <= 0) 
         errorAndExit("Inet pton error with ip adress.\n");
+    if( (servantSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0)
+        errorAndExit("Error connecting to socket");
 
     while (TRUE){
+        pthread_mutex_lock(&csMutex);
         int iAmServant = SERVANT;
+        printf("Sending I am servant to server\n");
         if(send(serverSocketFd, &iAmServant, sizeof(int), 0) == -1){
             errorAndExit("Error sending client info\n");
         }
-        int dataSize = 5;
-        if(send(serverSocketFd, &dataSize, sizeof(int), 0) == -1){
-            errorAndExit("Error sending data size\n");
+        printf("Sending head and tail to server\n");
+        if(send(serverSocketFd, &head, sizeof(int), 0) == -1){
+            errorAndExit("Error sending data\n");
         }
-        // if(send(serverSocketFd, data, dataSize, 0) == -1){
-        //     errorAndExit("Error sending data\n");
-        // }
+        if(send(serverSocketFd, &tail, sizeof(int), 0) == -1){
+            errorAndExit("Error sending data\n");
+        }
+        if(send(serverSocketFd, &procId, sizeof(int), 0) == -1){
+            errorAndExit("Error sending data\n");
+        }
+
         pthread_mutex_unlock(&csMutex);
         int response;
         if(recv(serverSocketFd, &response, sizeof(int), 0) < 0){
@@ -191,7 +200,35 @@ void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail){
         }
     }
 
-    close(serverSocket);
+    close(servantSocketFd);
+}
+
+int getPidWithProp(){
+    // Using pidof with open() system call
+    int procIdFd = open("/proc/self/status", O_RDONLY);
+    if(procIdFd < 0)
+        errorAndExit("Error opening /proc/self/status");
+
+    // Reading /proc/self/status
+    char *buffer = malloc(100);
+    if(read(procIdFd, buffer, 100) < 0)
+        errorAndExit("Error reading /proc/self/status");
+    // printf("buffer is %s\n", buffer);
+
+    // Finding "Pid:\t" in file with strstr
+    char *pid, *ppid;
+    if((pid = strstr(buffer, "Pid:\t")) == NULL)
+        errorAndExit("Error finding pid in /proc/self/status");
+    pid += 5;
+    // Finding "\nPPid:" in file with strstr
+    if((ppid = strstr(buffer, "\nPPid:")) == NULL)
+        errorAndExit("Error finding ppid in /proc/self/status");
+    ppid[0] = '\0';
+
+    int pidInteger = atoi(pid);    
+    free(buffer);
+
+    return pidInteger;
 }
 
 SgDateLinkedList *addDateToLinkedList(SgDateLinkedList *head, char *date){
