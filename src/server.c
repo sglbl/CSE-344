@@ -77,17 +77,19 @@ void tcpComm(){
     if ((listen(serverSocketFd, 256 /*256 connections will be queued*/)) == -1)
         errorAndExit("Listen error");
 
+    // This loop is not busy waiting because waits until get accepted.
     while (TRUE){
+        int processId;
+        char cityName[50], endCityName[50];
         socklen_t addresslength = sizeof(address);
-        // printf("Busy waiting checker\n"); // Not busy waiting because waits until get accepted.
-        if( (newServerSocketFd = accept(serverSocketFd, (struct sockaddr *)&address, &addresslength)) < 0){
+        // Wait until a client/servant connects
+        if( (newServerSocketFd = accept(serverSocketFd, (struct sockaddr *)&address, &addresslength)) < 0)
             errorAndExit("Accept error\n");
-        }
         if (newServerSocketFd > 0){
             // Add request to jobs çç
             pthread_mutex_lock(&csMutex);
             // add_request(serverSocket);
-            printf("Accepted\n\n");
+            printf("(%s) Server: Accepted\n\n", timeStamp());
 
             // Receiving head and tail information from servant 
             // (Which sub-dataset it is responsible for)
@@ -97,33 +99,38 @@ void tcpComm(){
                 errorAndExit("Error receiving client/servant information");
             }
             if(clientOrServant == SERVANT){
-                // printf("(%s) Servant %d present at port %d handling cities %s-%s\n", timeStamp()); //çç
-                if(recv(newServerSocketFd, &head, sizeof(int), 0) < 0){
+                // Receiving first city that servant will handle
+                if(recv(newServerSocketFd, &head, sizeof(int), 0) < 0)
                     errorAndExit("Error receiving head information");
-                }
-                if(recv(newServerSocketFd, &tail, sizeof(int), 0) < 0){
+                // Receiving end city that servant will handle 
+                if(recv(newServerSocketFd, &tail, sizeof(int), 0) < 0)
                     errorAndExit("Error receiving tail information");
-                }
-                if(recv(newServerSocketFd, &portNoToConnectTo, sizeof(int), 0) < 0){
-                    errorAndExit("Error receiving portNoToConnectTo information");
-                }
-                printf("Head: %d, Tail: %d, portNoToConnect %d\n", head, tail, portNoToConnectTo);
+                // Receiving city name as string
+                if(recv(newServerSocketFd, cityName, sizeof(cityName), 0) < 0)
+                    errorAndExit("Error receiving city name");
+                // Receiving end city name as string
+                if(recv(newServerSocketFd, endCityName, sizeof(endCityName), 0) < 0)
+                    errorAndExit("Error receiving end city name");
+                // Receiving process id of servant
+                if(recv(newServerSocketFd, &processId, sizeof(int), 0) < 0)
+                    errorAndExit("Error receiving process id");
+                // Receiving port number of servant that will be used later
+                // if(recv(newServerSocketFd, &portNoToConnectTo, sizeof(int), 0) < 0)
+                //     errorAndExit("Error receiving portNoToConnectTo information");
+                printf("Head: %d, Tail: %d, head city: %s, end city: %s, pid %d\n", head, tail, cityName, endCityName, processId);
             }
             else if(clientOrServant == CLIENT){
                 int dataSize;
-                if(recv(newServerSocketFd, &dataSize, sizeof(int), 0) < 0){
+                if(recv(newServerSocketFd, &dataSize, sizeof(int), 0) < 0)
                     errorAndExit("Error receiving head information");
-                }
-                printf("Data size: %d\n", dataSize);
-                if(recv(newServerSocketFd, data, dataSize, 0) < 0){
+                if(recv(newServerSocketFd, data, dataSize, 0) < 0)
                     errorAndExit("Error receiving head information");
-                }
-                data[dataSize] = '\0'; // Putting end of string character at the end of the string
+                 // Putting end of string character at the end of the string
+                data[dataSize] = '\0';
                 printf("(%s) Request arrived \"%s\"\n", timeStamp(), data);
             }
-            else{
+            else
                 errorAndExit("Error receiving client/servant information");
-            }
             
             pthread_mutex_unlock(&csMutex);
             // pthread_cond_signal(&cond_job); // Signal new job çç

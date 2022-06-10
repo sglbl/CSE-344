@@ -47,7 +47,7 @@ void printCityLinkedList(SgCityLinkedList *head);
 /* Prints date list */
 void printDateLinkedList(SgCityLinkedList *iter);
 /* COnnects to server with socket*/
-void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail);
+void servantTcpCommWithServer(SgCityLinkedList *cityList, char *ipv4Adress, int portNo, int head, int tail);
 /* City queue parser ; eg: 1-9 will parse to head=1, tail=9 */
 void cityQueueParser(char *citiesToHandle, int *head, int *tail);
 /* Returns pid of current process */

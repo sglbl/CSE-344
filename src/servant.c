@@ -112,7 +112,7 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
 
     printDateLinkedList(cityList);
     printf("Head is %d and tail is %d\n", head, tail);
-    servantTcpCommWithServer(ipv4Adress, portNo, head, tail);
+    servantTcpCommWithServer(cityList, ipv4Adress, portNo, head, tail);
 }
 
 void readFileOfTranscations(SgLinkedList *transactions, char *cityDirPath, char *date){
@@ -155,7 +155,7 @@ void cityQueueParser(char *citiesToHandle, int *head, int *tail){
     }
 }
 
-void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail){
+void servantTcpCommWithServer(SgCityLinkedList *cityList, char *ipv4Adress, int portNo, int head, int tail){
     // Create socket
     int serverSocketFd, servantSocketFd;
     if((serverSocketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -163,7 +163,6 @@ void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail){
     }
 
     int procId = getPidWithProp();
-    // printf("procId: %d\n", procId);
 
     // Connecting to socket of servant
     struct sockaddr_in serverSocketAdressInfo;
@@ -178,26 +177,33 @@ void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail){
     while (TRUE){
         pthread_mutex_lock(&csMutex);
         int iAmServant = SERVANT;
-        printf("Sending I am servant to server\n");
-        if(send(serverSocketFd, &iAmServant, sizeof(int), 0) == -1){
+        printf("(%s) Servant-%d: Informing server that I am servant\n", timeStamp(), procId);
+        if(send(serverSocketFd, &iAmServant, sizeof(int), 0) == -1)
             errorAndExit("Error sending client info\n");
-        }
-        printf("Sending head and tail to server\n");
-        if(send(serverSocketFd, &head, sizeof(int), 0) == -1){
+        // Sending first city to server that servant will handle
+        if(send(serverSocketFd, &head, sizeof(int), 0) == -1)
             errorAndExit("Error sending data\n");
-        }
-        if(send(serverSocketFd, &tail, sizeof(int), 0) == -1){
+        // Sending end city
+        if(send(serverSocketFd, &tail, sizeof(int), 0) == -1)
             errorAndExit("Error sending data\n");
-        }
-        if(send(serverSocketFd, &procId, sizeof(int), 0) == -1){
+        // send first city name that this servant is handling
+        if(send(serverSocketFd, cityList->cityName.data, strlen(cityList->cityName.data), 0) == -1)
             errorAndExit("Error sending data\n");
-        }
-
+        // iterate through cities to find last city name to send
+        for(int i = 0; i < tail - head; i++)
+            cityList = cityList->next;
+        // Sending last city name that this servant is handling
+        if(send(serverSocketFd, cityList->cityName.data, strlen(cityList->cityName.data), 0) == -1)
+            errorAndExit("Error sending data\n");
+        // Sending process id
+        if(send(serverSocketFd, &procId, sizeof(int), 0) == -1)
+            errorAndExit("Error sending data\n");
         pthread_mutex_unlock(&csMutex);
+
+        // RECEIVING RESPONSE FROM SERVER
         int response;
-        if(recv(serverSocketFd, &response, sizeof(int), 0) < 0){
+        if(recv(serverSocketFd, &response, sizeof(int), 0) < 0)
             errorAndExit("Error receiving head information");
-        }
     }
 
     close(servantSocketFd);
