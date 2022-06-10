@@ -66,74 +66,82 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
     SgCityLinkedList *cityList = calloc(1, sizeof(SgCityLinkedList));
     cityList->next = NULL;
 
-    // Reading province names from the dataset folder
+    // READING PROVINCE NAMES FROM THE DATASET FOLDER
     struct dirent **allTheEntities;
     int readed;
     if((readed = scandir(dirPath, &allTheEntities, NULL, alphasort)) < 0)
         errorAndExit("scandir error while searching for directories");
-    // printf("Found %d directories\n", readed);
     for(int i = 0; i < readed; ++i){
         if(i - 1 >= head && i - 1 <= tail){
             cityList = addCityToLinkedList(cityList, allTheEntities[i]->d_name);
-            // printf("Added %s to list\n", allTheEntities[i]->d_name);
         }
         free(allTheEntities[i]);
     }
     free(allTheEntities);
 
-
-    // Reading inside of the province folders
+    // READING FILE NAMES IN THE PROVINCE FOLDERS
     DIR *dir;
     struct dirent *ent;
     SgCityLinkedList *cityIter = cityList;
 
     while(cityIter != NULL && cityIter->cityName.data != NULL){
-        cityIter->transactions = calloc(1, sizeof(SgLinkedList));
-        cityIter->transactions->next = NULL;
+        cityIter->dateLL = calloc(1, sizeof(SgDateLinkedList));
+        cityIter->dateLL->next = NULL;
         // printf("iter->data (city name): %s\n", cityIter->cityName.data);
 
         char *cityDirPath = malloc(strlen(dirPath) + strlen(cityIter->cityName.data) + 2);
         strcpy(cityDirPath, dirPath);
         strcat(cityDirPath, "/");
         strcat(cityDirPath, cityIter->cityName.data);
-        
+
         if((dir = opendir(cityDirPath)) == NULL)
             errorAndExit("opendir error while opening directory");
         while((ent = readdir(dir)) != NULL){
             if(strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0){
-                // printf("entDname %s\n", ent->d_name);
-                cityIter->transactions = addTransactionToLinkedList(cityIter->transactions, ent->d_name);
+                printf("entDname %s\n", ent->d_name);
+                cityIter->dateLL = addDateToLinkedList(cityIter->dateLL, ent->d_name);
+                cityIter->dateLL->transactions = calloc(1, sizeof(SgLinkedList));
+                cityIter->dateLL->transactions->next = NULL;
+                readFileOfTranscations(cityIter->dateLL->transactions, cityDirPath/*City directory*/, ent->d_name/*date*/);
             }
         }
         closedir(dir);
         cityIter = cityIter->next;
     }
 
-    // dir = opendir(dirPath[i]);
-    // if(dir == NULL){
-    //     errorAndExit("Error opening directory\n");
-    // }
-    // SgLinkedList *list = calloc(1, sizeof(SgLinkedList));
-    // list->next = NULL;
-    // while((ent = readdir(dir)) != NULL){
-    //     // If finds current folder or parent folder, skip it
-        
-    //     if(strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0){
-    //         continue;
-    //     }
-    //     else{
-    //         char *filePath = malloc(sizeof(char) * (strlen(dirPaths[i]) + strlen(ent->d_name) + 1));
-    //         strcpy(filePath, dirPaths[i]);
-    //         strcat(filePath, ent->d_name);
-    //         // Adding file to the linked list
-    //         list = addToLinkedList(list, filePath);
-    //     }
-    // }
-    // closedir(dir);
-
-    printCityLinkedList(cityList);
+    printDateLinkedList(cityList);
     printf("Head is %d and tail is %d\n", head, tail);
     servantTcpCommWithServer(ipv4Adress, portNo, head, tail);
+}
+
+void readFileOfTranscations(SgLinkedList *transactions, char *cityDirPath, char *date){
+    char *filePath = malloc(strlen(cityDirPath) + strlen(date) + 2);
+    strcpy(filePath, cityDirPath);
+    strcat(filePath, "/");
+    strcat(filePath, date);
+
+    // Reading file with read()
+    int transactionFd;
+    if((transactionFd = open(filePath, O_RDONLY, 0666)) < 0)
+        errorAndExit("Error while opening request file");
+
+    // Reading number of lines in the request file by using stat
+    struct stat statOfFile;
+    stat(filePath, &statOfFile);
+    // Buffer will be used to temporarily storing.
+    char *buffer = calloc( statOfFile.st_size , 1);
+
+    if(read(transactionFd, buffer, statOfFile.st_size) < 0)
+        errorAndExit("error while reading file");
+
+    // Parsing file with strtok()
+    char *line = strtok(buffer, "\n");
+    for(int i = 0; line != NULL || line[0] != '\0'; i++){
+        transactions = addTransactionToLinkedList(transactions, line);
+        line = strtok(NULL, "\n");
+        if(line == NULL)    break;
+    }
+
 }
 
 void cityQueueParser(char *citiesToHandle, int *head, int *tail){
@@ -186,6 +194,22 @@ void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail){
     close(serverSocket);
 }
 
+SgDateLinkedList *addDateToLinkedList(SgDateLinkedList *head, char *date){
+    SgDateLinkedList *tempIterator = head;
+    while(tempIterator->next != NULL){
+		tempIterator = tempIterator->next;	
+	}
+	tempIterator->next=(SgDateLinkedList*)calloc(1, sizeof(SgDateLinkedList));
+    int stringLength = strlen(date);
+    tempIterator->date.data = calloc(stringLength + 1, sizeof(char));
+    strncpy(tempIterator->date.data, date, stringLength);
+    tempIterator->date.data[stringLength] = '\0';
+
+	tempIterator->next->next=NULL;
+
+    return head;    
+}
+
 SgCityLinkedList *addCityToLinkedList(SgCityLinkedList *head, char *cityName){
     SgCityLinkedList *tempIterator = head;
     while(tempIterator->next != NULL){
@@ -212,21 +236,18 @@ SgLinkedList *addTransactionToLinkedList(SgLinkedList *head, char *transaction){
     int stringLength = strlen(transaction);
     tempIterator->string.data = calloc(stringLength + 1, sizeof(char));
     strncpy(tempIterator->string.data, transaction, stringLength);
-    // tempIterator->string.data = filePath;
-    // printf("Filepath is %s\n", filePath);
 
 	tempIterator->next->next=NULL;
-
     return head;
 }
 
-void printCityLinkedList(SgCityLinkedList *iter){
+void printDateLinkedList(SgCityLinkedList *iter){
     printf("(%s) Printing linkedlist values\n", timeStamp());
     while(iter->next != NULL){
         printf("(%s) %s\n", timeStamp(), iter->cityName.data);
-        while(iter->transactions->next != NULL){
-            printf("(%s) %s\n", timeStamp(), iter->transactions->string.data);
-            iter->transactions = iter->transactions->next;
+        while(iter->dateLL->next != NULL){
+            printf("(%s) %s\n", timeStamp(), iter->dateLL->date.data);
+            iter->dateLL = iter->dateLL->next;
         }
         iter = iter->next;
     }

@@ -6,9 +6,15 @@
 */
 #include "common.h"
 
+typedef struct SgDateLinkedList{
+    String date;
+    SgLinkedList *transactions;
+    struct SgDateLinkedList *next;
+} SgDateLinkedList;
+
 typedef struct SgCityLinkedList{
     String cityName;
-    SgLinkedList *transactions;
+    SgDateLinkedList *dateLL;
     struct SgCityLinkedList *next;
 } SgCityLinkedList;
 
@@ -26,14 +32,20 @@ void mySignalHandler(int signalNumber);
 void barrier();
 /* Integer to string */
 char *itoaForAscii(int number);
-/* Adds value to linked list */
+/* Adds date to linked list */
+SgDateLinkedList *addDateToLinkedList(SgDateLinkedList *head, char *date);
+/* Adds transaction to linked list */
 SgLinkedList *addTransactionToLinkedList(SgLinkedList *head, char *transaction);
 /* Adds city to linked list */
 SgCityLinkedList *addCityToLinkedList(SgCityLinkedList *head, char *cityName);
+/* Reads files of transcations */
+void readFileOfTranscations(SgLinkedList *transactions, char *cityDirPath, char *date);
 /* Prints linked list */
 void printLinkedList(SgLinkedList *head);
 /* Prints city list */
 void printCityLinkedList(SgCityLinkedList *head);
+/* Prints date list */
+void printDateLinkedList(SgCityLinkedList *iter);
 /* COnnects to server with socket*/
 void servantTcpCommWithServer(char *ipv4Adress, int portNo, int head, int tail);
 /* City queue parser ; eg: 1-9 will parse to head=1, tail=9 */
