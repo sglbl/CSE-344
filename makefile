@@ -16,6 +16,11 @@ run:
 # ./bin/server -p 33000 -t 11
 # ./bin/client -r ../requestFile -q 33000 -s 127.0.0.1
 
+for_debug:
+	gcc -pthread -g -Wall src/server.c src/common.c -lm -o bin/server
+	gcc -pthread -g -Wall src/servant.c src/common.c -lm -o bin/servant
+	gcc -pthread -g -Wall src/client.c src/common.c -lm -o bin/client
+
 debug:
 	gcc -pthread -Wall -g src/server.c src/common.c -lm -o bin/server
 	gcc -pthread -Wall -g src/servant.c src/common.c -lm -o bin/servant

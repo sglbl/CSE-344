@@ -9,6 +9,10 @@
 #define TRUE 1
 #define FALSE 0
 
+#define CLIENT 1
+#define SERVANT 2
+
+
 typedef struct String {
     char *data;
 } String;

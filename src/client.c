@@ -17,7 +17,7 @@
 static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
 static pthread_cond_t barrierCond;
-static int s_numOfThreads, s_portNo;
+static int s_numOfThreads, s_portNo, s_clientSocketFd;
 static char *s_ipv4;
 static int arrivedToRendezvousPoint = 0;
 static volatile sig_atomic_t didSigIntCome = 0;
@@ -101,9 +101,10 @@ void getRequests(char *buffer, String *lineData){
     char *line = strtok(buffer, "\n");
     for(int i = 0; i < s_numOfThreads && line != NULL; i++){
         // printf("strlen line is %ld\n", strlen(line));
-        printf("line is %s\n", line);
+        // printf("Line is %s\n", line);
         lineData[i].data = calloc(strlen(line) + 1, sizeof(char));
-        strncpy(lineData[i].data, line, strlen(line)+1);
+        strncpy(lineData[i].data, line, strlen(line));
+        lineData[i].data[strlen(line)] = '\0';
         if(buffer != NULL) line = strtok(NULL, "\n");
     }
 
@@ -152,13 +153,13 @@ void createThreads(String *lineData){
 void *doClientJob(void *arg){
     // extract struct as char *filePath, int portNo, char *ipv4
     InfoFromClientToServer *info = arg; // contains data for request to be sent
-    printf("Client-Thread-%d: Thread-%d has been created\n", info->threadId, info->threadId);
+    printf("(%s) Client-Thread-%d: Thread-%d has been created\n", timeStamp(), info->threadId, info->threadId);
     barrier();
 
+    printf("(%s) Client-Thread-%d: I am requesting \"/%s\"\n", timeStamp(), info->threadId, info->lineData.data);
+    tcpCommWithServer(info->lineData.data, info->threadId);
 
-
-
-    pthread_exit(NULL);
+    return NULL;
 }
 
 void barrier(){
@@ -176,6 +177,46 @@ void barrier(){
         }
     }
     pthread_mutex_unlock(&barrierMutex);
+}
+
+void tcpCommWithServer(char *data, int threadNo){
+    // Create socket
+    int serverSocketFd, clientSocketFd;
+    if((serverSocketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        errorAndExit("Error creating socket");
+    }
+
+    // Connecting to socket of servant
+    struct sockaddr_in serverSocketAdressInfo;
+    serverSocketAdressInfo.sin_family = AF_INET;
+    serverSocketAdressInfo.sin_port = htons(s_portNo);
+    serverSocketAdressInfo.sin_addr.s_addr = INADDR_ANY;
+    if( (clientSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0){
+        errorAndExit("Error connecting to socket");
+    }
+    else{
+        pthread_mutex_lock(&csMutex);
+        int iAmClient = CLIENT;
+        if(send(serverSocketFd, &iAmClient, sizeof(int), 0) == -1){
+            errorAndExit("Error sending client info\n");
+        }
+        int dataSize = strlen(data);
+        if(send(serverSocketFd, &dataSize, sizeof(int), 0) == -1){
+            errorAndExit("Error sending data size\n");
+        }
+        if(send(serverSocketFd, data, dataSize, 0) == -1){
+            errorAndExit("Error sending data\n");
+        }
+        pthread_mutex_unlock(&csMutex);
+        int response;
+        if(recv(serverSocketFd, &response, sizeof(int), 0) < 0){
+            errorAndExit("Error receiving head information");
+        }
+
+        // printf("(%s) Client: Data sent\n", timeStamp());
+    }
+    s_clientSocketFd = clientSocketFd;
+    // close(clientSocketFd);
 }
 
 static void exitingJob(){

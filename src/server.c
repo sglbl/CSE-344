@@ -15,7 +15,7 @@
 #include "../include/server.h"
 #include "../include/common.h"
 
-static int numOfThreads;
+static int s_numOfThreads, s_portNo;
 static volatile sig_atomic_t didSigIntCome = 0;
 static pthread_mutex_t csMutex;
 static pthread_mutex_t barrierMutex;
@@ -48,46 +48,89 @@ int main(int argc, char *argv[]){
     signalHandlerInitializer();
     // int fileDescs[3];
     // openFiles(filePath1, filePath2, outputPath, fileDescs);
-    numOfThreads = noOfThreads;
-    getSocketInfoFromServant(portNo);
+    s_numOfThreads = noOfThreads;
+    s_portNo = portNo;
+    // getSocketInfoFromServant(portNo);
+    tcpComm();
     // createThreads(portNo);
 
     return 0;
 }
 
-void getSocketInfoFromServant(int portNo){
-    // Create socket
-    int serverSocketFdToGetFromServant;
-    if((serverSocketFdToGetFromServant = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        errorAndExit("Error creating socket");
+void tcpComm(){
+    printf("(%s) Server is waiting\n", timeStamp());
+    char data[100];
+    struct sockaddr_in address;
+    struct sockaddr_in serverSocketAdress;
+    int serverSocketFd, newServerSocketFd;
+    if ((serverSocketFd = socket(AF_INET/*ipv4*/, SOCK_STREAM, 0)) == -1) {
+        errorAndExit("Socket creation error\n");
+    }
+    
+    serverSocketAdress.sin_family = AF_INET;
+    serverSocketAdress.sin_port = htons(s_portNo);
+    serverSocketAdress.sin_addr.s_addr = INADDR_ANY;
+
+    if ((bind(serverSocketFd, (struct sockaddr *)&serverSocketAdress, sizeof(serverSocketAdress))) == -1)
+        errorAndExit("Bind error");
+
+    if ((listen(serverSocketFd, 256 /*256 connections will be queued*/)) == -1)
+        errorAndExit("Listen error");
+
+    while (TRUE){
+        socklen_t addresslength = sizeof(address);
+        // printf("Busy waiting checker\n"); // Not busy waiting because waits until get accepted.
+        if( (newServerSocketFd = accept(serverSocketFd, (struct sockaddr *)&address, &addresslength)) < 0){
+            errorAndExit("Accept error\n");
+        }
+        if (newServerSocketFd > 0){
+            // Add request to jobs çç
+            pthread_mutex_lock(&csMutex);
+            // add_request(serverSocket);
+            printf("Accepted\n\n");
+
+            // Receiving head and tail information from servant 
+            // (Which sub-dataset it is responsible for)
+            int clientOrServant; /* If request coming from client = 1, if request coming from servant = 2 */
+            int head, tail, portNoToConnectTo;
+            if(recv(newServerSocketFd, &clientOrServant, sizeof(int), 0) < 0){
+                errorAndExit("Error receiving client/servant information");
+            }
+            if(clientOrServant == SERVANT){
+                // printf("(%s) Servant %d present at port %d handling cities %s-%s\n", timeStamp()); //çç
+                if(recv(newServerSocketFd, &head, sizeof(int), 0) < 0){
+                    errorAndExit("Error receiving head information");
+                }
+                if(recv(newServerSocketFd, &tail, sizeof(int), 0) < 0){
+                    errorAndExit("Error receiving tail information");
+                }
+                if(recv(newServerSocketFd, &portNoToConnectTo, sizeof(int), 0) < 0){
+                    errorAndExit("Error receiving portNoToConnectTo information");
+                }
+                printf("Head: %d, Tail: %d, portNoToConnect %d\n", head, tail, portNoToConnectTo);
+            }
+            else if(clientOrServant == CLIENT){
+                int dataSize;
+                if(recv(newServerSocketFd, &dataSize, sizeof(int), 0) < 0){
+                    errorAndExit("Error receiving head information");
+                }
+                printf("Data size: %d\n", dataSize);
+                if(recv(newServerSocketFd, data, dataSize, 0) < 0){
+                    errorAndExit("Error receiving head information");
+                }
+                data[dataSize] = '\0'; // Putting end of string character at the end of the string
+                printf("(%s) Request arrived \"%s\"\n", timeStamp(), data);
+            }
+            else{
+                errorAndExit("Error receiving client/servant information");
+            }
+            
+            pthread_mutex_unlock(&csMutex);
+            // pthread_cond_signal(&cond_job); // Signal new job çç
+        }
     }
 
-    // Connecting to socket of servant
-    struct sockaddr_in serverSocketInfo;
-    serverSocketInfo.sin_family = AF_INET;
-    serverSocketInfo.sin_port = htons(portNo);
-    serverSocketInfo.sin_addr.s_addr = INADDR_ANY;
-    if(connect(serverSocketFdToGetFromServant, (struct sockaddr *)&serverSocketInfo, sizeof(serverSocketInfo)) < 0){
-        errorAndExit("Error connecting to socket");
-    }
-    else{
-        printf("Success\n");
-        // Receiving head and tail information from servant 
-        // (Which sub-dataset it is responsible for)
-        int head, tail, portNoToConnectTo;
-        if(recv(serverSocketFdToGetFromServant, &head, sizeof(int), 0) < 0){
-            errorAndExit("Error receiving head");
-        }
-        if(recv(serverSocketFdToGetFromServant, &tail, sizeof(int), 0) < 0){
-            errorAndExit("Error receiving tail");
-        }
-        // get from which port number the server can connect to this servant after.
-        if(recv(serverSocketFdToGetFromServant, &portNoToConnectTo, sizeof(int), 0) < 0){
-            errorAndExit("Error receiving port number");
-        }
-
-        printf("Head: %d, Tail: %d, portNoToConnect %d\n", head, tail, portNoToConnectTo);
-    }
+    close(newServerSocketFd);
 
 }
 
@@ -122,24 +165,24 @@ void createThreads(int portNo){
     pthread_mutex_init(&barrierMutex, NULL); 
     pthread_cond_init(&barrierCond, NULL);
     pthread_attr_t attr;
-    pthread_t threads[numOfThreads];
+    pthread_t threads[s_numOfThreads];
 
     // set global thread attributes
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
     typedef int Info; //çç
-    Info info[numOfThreads];
+    Info info[s_numOfThreads];
     memset(info, 0, sizeof(info));
 
     // Creating threads
-    for (int i = 0; i < numOfThreads; i++){  
+    for (int i = 0; i < s_numOfThreads; i++){  
         if( pthread_create(&threads[i], &attr, threadJob, (void*)&info[i]) != 0 ){ // if returns 0 it's okay.
             errorAndExit("pthread_create()");
         }
     }
 
-    for(int i = 0; i < numOfThreads; i++){
+    for(int i = 0; i < s_numOfThreads; i++){
         if( pthread_join(threads[i], NULL) != 0 ){
             errorAndExit("pthread_join()");
         }
@@ -172,7 +215,7 @@ void barrier(){
     pthread_mutex_lock(&barrierMutex);
     ++part1FinishedThreads;
     while(TRUE){ // Not busy waiting. Using conditional variable + mutex for monitoring
-        if(part1FinishedThreads == numOfThreads /* Number of threads */){
+        if(part1FinishedThreads == s_numOfThreads /* Number of threads */){
             part1FinishedThreads = 0;
             pthread_cond_broadcast(&barrierCond); // signal to all threads to wake them up
             break;

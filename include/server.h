@@ -24,4 +24,6 @@ void createSocketInfo(int portNo); // creates socket info as like client
 
 void getSocketInfoFromServant(int portNo); // gets info from servant
 
+void tcpComm();
+
 #endif

@@ -27,5 +27,7 @@ int getNumberOfRequests(int fileSize, int requestFd, char *buffer);
 void getRequests(char *buffer, String *lineData);
 /* Creates threads */
 void createThreads(String *lineData);
+/* Tcp communication with server */
+void tcpCommWithServer(char *data, int threadNo);
 
 #endif

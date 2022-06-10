@@ -26,9 +26,9 @@ SgLinkedList *addToLinkedList(SgLinkedList *head, char *filePath);
 // void freeLinkedList(SgLinkedList *head);
 /* Prints linked list */
 void printLinkedList(SgLinkedList *head);
-
+/* COnnects to server with socket*/
 void connectToTheServer(char *ipv4Adress, int portNo, int head, int tail);
-
+/* City queue parser ; eg: 1-9 will parse to head=1, tail=9 */
 void cityQueueParser(char *citiesToHandle, int *head, int *tail);
 
 
