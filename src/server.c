@@ -79,9 +79,8 @@ void tcpComm(){
 
     // This loop is not busy waiting because waits until get accepted.
     while (TRUE){
-        int processId;
-        char cityName[50], endCityName[50];
         socklen_t addresslength = sizeof(address);
+        char firstCityName[25], lastCityName[25];
         // Wait until a client/servant connects
         if( (newServerSocketFd = accept(serverSocketFd, (struct sockaddr *)&address, &addresslength)) < 0)
             errorAndExit("Accept error\n");
@@ -89,35 +88,27 @@ void tcpComm(){
             // Add request to jobs çç
             pthread_mutex_lock(&csMutex);
             // add_request(serverSocket);
-            printf("(%s) Server: Accepted\n\n", timeStamp());
+            printf("(%s) Server: Accepted\n", timeStamp());
 
             // Receiving head and tail information from servant 
             // (Which sub-dataset it is responsible for)
             int clientOrServant; /* If request coming from client = 1, if request coming from servant = 2 */
-            int head, tail, portNoToConnectTo;
             if(recv(newServerSocketFd, &clientOrServant, sizeof(int), 0) < 0){
                 errorAndExit("Error receiving client/servant information");
             }
             if(clientOrServant == SERVANT){
-                // Receiving first city that servant will handle
-                if(recv(newServerSocketFd, &head, sizeof(int), 0) < 0)
+                ServantSendingInfo receivedInfoFromServant;
+                if(recv(newServerSocketFd, &receivedInfoFromServant, sizeof(ServantSendingInfo), 0) < 0){
                     errorAndExit("Error receiving head information");
-                // Receiving end city that servant will handle 
-                if(recv(newServerSocketFd, &tail, sizeof(int), 0) < 0)
-                    errorAndExit("Error receiving tail information");
-                // Receiving city name as string
-                if(recv(newServerSocketFd, cityName, sizeof(cityName), 0) < 0)
-                    errorAndExit("Error receiving city name");
+                }
+                if(recv(newServerSocketFd, firstCityName, receivedInfoFromServant.cityName1Size, 0) < 0)
+                    errorAndExit("Error receiving first city name");
                 // Receiving end city name as string
-                if(recv(newServerSocketFd, endCityName, sizeof(endCityName), 0) < 0)
-                    errorAndExit("Error receiving end city name");
-                // Receiving process id of servant
-                if(recv(newServerSocketFd, &processId, sizeof(int), 0) < 0)
-                    errorAndExit("Error receiving process id");
-                // Receiving port number of servant that will be used later
-                // if(recv(newServerSocketFd, &portNoToConnectTo, sizeof(int), 0) < 0)
-                //     errorAndExit("Error receiving portNoToConnectTo information");
-                printf("Head: %d, Tail: %d, head city: %s, end city: %s, pid %d\n", head, tail, cityName, endCityName, processId);
+                if(recv(newServerSocketFd, lastCityName, receivedInfoFromServant.cityName2Size, 0) < 0)
+                    errorAndExit("Error receiving last city name");
+
+                printf("Server got: %d %d %d\n", receivedInfoFromServant.head, receivedInfoFromServant.tail, receivedInfoFromServant.portNoToUseLater);
+                printf("Got Cities %s %s\n", firstCityName, lastCityName);
             }
             else if(clientOrServant == CLIENT){
                 int dataSize;

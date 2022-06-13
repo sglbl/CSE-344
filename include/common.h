@@ -12,6 +12,11 @@
 #define CLIENT 1
 #define SERVANT 2
 
+typedef struct ServantSendingInfo{
+    int head, tail, procId, portNoToUseLater;
+    int cityName1Size, cityName2Size;
+    // char *cityName1, *cityName2; # sending pointer dwon't work
+} ServantSendingInfo;
 
 typedef struct String {
     char *data;

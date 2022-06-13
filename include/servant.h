@@ -6,6 +6,8 @@
 */
 #include "common.h"
 
+static int portNoThatServantIsListeningOn = 59161;
+
 typedef struct SgDateLinkedList{
     String date;
     SgLinkedList *transactions;

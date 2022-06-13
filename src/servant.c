@@ -174,30 +174,45 @@ void servantTcpCommWithServer(SgCityLinkedList *cityList, char *ipv4Adress, int 
     if( (servantSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0)
         errorAndExit("Error connecting to socket");
 
+    // addValuesToStruct(head, tail, cityList->cityName.data, cityList->cityName.data, procId, portNoToUseLater);
+
     while (TRUE){
         pthread_mutex_lock(&csMutex);
         int iAmServant = SERVANT;
         printf("(%s) Servant-%d: Informing server that I am servant\n", timeStamp(), procId);
         if(send(serverSocketFd, &iAmServant, sizeof(int), 0) == -1)
             errorAndExit("Error sending client info\n");
-        // Sending first city to server that servant will handle
-        if(send(serverSocketFd, &head, sizeof(int), 0) == -1)
-            errorAndExit("Error sending data\n");
-        // Sending end city
-        if(send(serverSocketFd, &tail, sizeof(int), 0) == -1)
-            errorAndExit("Error sending data\n");
-        // send first city name that this servant is handling
-        if(send(serverSocketFd, cityList->cityName.data, strlen(cityList->cityName.data), 0) == -1)
-            errorAndExit("Error sending data\n");
-        // iterate through cities to find last city name to send
+
+        // Sending information of servant to the server
+        ServantSendingInfo sendingInfo;
+        char *cityName1 = cityList->cityName.data;
         for(int i = 0; i < tail - head; i++)
             cityList = cityList->next;
-        // Sending last city name that this servant is handling
-        if(send(serverSocketFd, cityList->cityName.data, strlen(cityList->cityName.data), 0) == -1)
+        char *cityName2 = cityList->cityName.data;
+
+        sendingInfo.head = head; 
+        sendingInfo.tail = tail;
+        sendingInfo.procId = procId;
+        // Sending city name sizes with +1 because of '\0' character
+        sendingInfo.cityName1Size = strlen(cityName1) + 1;
+        sendingInfo.cityName2Size = strlen(cityName2) + 1;
+
+        // Sending portNo that will be used later
+        ++portNoThatServantIsListeningOn;
+        int portNoToUseLater = portNoThatServantIsListeningOn;
+        sendingInfo.portNoToUseLater = portNoToUseLater;
+
+        if(send(serverSocketFd, &sendingInfo, sizeof(ServantSendingInfo), 0) == -1)
+            errorAndExit("Error while sending data");
+
+        // send first city name that this servant is handling
+        if(send(serverSocketFd, cityName1, sendingInfo.cityName1Size, 0) == -1)
             errorAndExit("Error sending data\n");
-        // Sending process id
-        if(send(serverSocketFd, &procId, sizeof(int), 0) == -1)
+        // send last city name that this servant is handling
+        if(send(serverSocketFd, cityName2, sendingInfo.cityName2Size, 0) == -1)
             errorAndExit("Error sending data\n");
+
+        
         pthread_mutex_unlock(&csMutex);
 
         // RECEIVING RESPONSE FROM SERVER
@@ -210,7 +225,7 @@ void servantTcpCommWithServer(SgCityLinkedList *cityList, char *ipv4Adress, int 
 }
 
 int getPidWithProp(){
-    // Using pidof with open() system call
+    // Instead pidof using proc/self/status with open() system call
     int procIdFd = open("/proc/self/status", O_RDONLY);
     if(procIdFd < 0)
         errorAndExit("Error opening /proc/self/status");
@@ -262,8 +277,7 @@ SgCityLinkedList *addCityToLinkedList(SgCityLinkedList *head, char *cityName){
     int stringLength = strlen(cityName);
     tempIterator->cityName.data = calloc(stringLength + 1, sizeof(char));
     strncpy(tempIterator->cityName.data, cityName, stringLength);
-    // tempIterator->string.data = filePath;
-    // printf("Filepath is %s\n", filePath);
+    tempIterator->cityName.data[stringLength] = '\0';
 
 	tempIterator->next->next=NULL;
 
@@ -279,6 +293,7 @@ SgLinkedList *addTransactionToLinkedList(SgLinkedList *head, char *transaction){
     int stringLength = strlen(transaction);
     tempIterator->string.data = calloc(stringLength + 1, sizeof(char));
     strncpy(tempIterator->string.data, transaction, stringLength);
+    tempIterator->string.data[stringLength] = '\0';
 
 	tempIterator->next->next=NULL;
     return head;
