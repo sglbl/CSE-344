@@ -10,7 +10,12 @@ compile:
 
 clean:
 	rm -f bin/server bin/servant bin/client
-#Kill code: kill -9 $(ps -C server -o pid=)
+
+kill: # kills all servers
+	ps -C server -o pid= | xargs kill -9
+	gcc -pthread -Wall -std=gnu17 src/server.c src/common.c -lm -o bin/server
+	gcc -pthread -Wall -std=gnu17 src/servant.c src/common.c -lm -o bin/servant
+	gcc -pthread -Wall -std=gnu17 src/client.c src/common.c -lm -o bin/client
 
 for_debug:
 	gcc -pthread -g -Wall src/server.c src/common.c -lm -o bin/server

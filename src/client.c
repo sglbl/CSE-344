@@ -123,7 +123,6 @@ void createThreads(String *lineData){
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
-
     printf("(%s) Client: I have loaded %d requests and I'm creating %d threads.\n", timeStamp(), s_numOfThreads, s_numOfThreads);
     InfoFromClientToServer infoFromClientToServer[s_numOfThreads];
     // Creating threads

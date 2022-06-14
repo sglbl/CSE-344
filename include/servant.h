@@ -6,8 +6,6 @@
 */
 #include "common.h"
 
-static int portNoThatServantIsListeningOn = 59161;
-
 typedef struct SgDateLinkedList{
     String date;
     SgLinkedList *transactions;
@@ -47,14 +45,20 @@ void printLinkedList(SgLinkedList *head);
 /* Prints city list */
 void printCityLinkedList(SgCityLinkedList *head);
 /* Prints date list */
-void printDateLinkedList(SgCityLinkedList *iter);
-/* COnnects to server with socket*/
-void servantTcpCommWithServer(SgCityLinkedList *cityList, char *ipv4Adress, int portNo, int head, int tail);
+void printDateLinkedList(SgDateLinkedList *iter);
+
+void printDateLinkedListAllCities(SgCityLinkedList *iter);
+/* Connects to server with socket*/
+void servantTcpCommWithServerToSend(SgCityLinkedList *cityList, char *ipv4Adress, int portNo, int head, int tail);
+/* Servant tcp communication with server to get response */
+void servantTcpCommWithServerToGet(SgCityLinkedList *cityList, char *ipv4Adress, int portNo, int head, int tail);
 /* City queue parser ; eg: 1-9 will parse to head=1, tail=9 */
 void cityQueueParser(char *citiesToHandle, int *head, int *tail);
 /* Returns pid of current process */
 int getPidWithProp();
 /* Frees linked list */
 // void freeLinkedList(SgLinkedList *head);
+
+SgDateLinkedList *sortDates(SgDateLinkedList *cityIter);
 
 #endif
