@@ -23,6 +23,7 @@ typedef struct String {
 } String;
 
 typedef struct SgLinkedList{
+    int fileDesc, isBusy;
     String string;
     struct SgLinkedList *next;
 } SgLinkedList;

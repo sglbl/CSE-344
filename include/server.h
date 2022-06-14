@@ -17,13 +17,13 @@ void *threadJob(void *arg);
 void signalHandlerInitializer();
 /* Signal handler */
 void mySignalHandler(int signalNumber);
-/* Barrier implementation */
-void barrier();
-
-void createSocketInfo(int portNo); // creates socket info as like client
-
-void getSocketInfoFromServant(int portNo); // gets info from servant
-
+/* Stream socket communication with servant and client */
 void tcpComm();
+/* Main thread forwards incoming connections to threads */
+void forwardIncomingConnection(int newServerSocketFd);
+
+void addToQueue(int newFileDesc);
+
+void removeFromQueue(int newFileDesc);
 
 #endif

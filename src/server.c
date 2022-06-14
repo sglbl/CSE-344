@@ -18,9 +18,13 @@
 static int s_numOfThreads, s_portNo;
 static volatile sig_atomic_t didSigIntCome = 0;
 static pthread_mutex_t csMutex;
-static pthread_mutex_t barrierMutex;
-static pthread_cond_t barrierCond;
+static pthread_mutex_t monitorMutex;
+static pthread_cond_t monitorCond;
 static int part1FinishedThreads;
+//queue to store the incoming connections and distribute them to non-busy pool of threads
+static int s_numOfConnectionsWaiting = 0;
+static SgLinkedList *s_connectionQueue;
+static SgLinkedList *frontOfQueue = NULL, *rearOfQueue = NULL;
 
 int main(int argc, char *argv[]){
     setvbuf(stdout, NULL, _IONBF, 0); // Disable output buffering
@@ -46,16 +50,74 @@ int main(int argc, char *argv[]){
     }
 
     signalHandlerInitializer();
-    // int fileDescs[3];
-    // openFiles(filePath1, filePath2, outputPath, fileDescs);
     s_numOfThreads = noOfThreads;
     s_portNo = portNo;
-    // getSocketInfoFromServant(portNo);
+    createThreads(portNo);
     tcpComm();
-    // createThreads(portNo);
 
     return 0;
 }
+
+void createThreads(int portNo){
+    // Initializing mutex and conditional variable
+    pthread_mutex_init(&csMutex, NULL); 
+    pthread_mutex_init(&monitorMutex, NULL); 
+    pthread_cond_init(&monitorCond, NULL);
+    pthread_attr_t attr;
+    pthread_t threads[s_numOfThreads];
+
+    // set global thread attributes
+    pthread_attr_init(&attr);
+    pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+
+    // typedef int Info; //çç
+    // Info info[s_numOfThreads];
+    // memset(info, 0, sizeof(info));
+
+    // // Creating threads
+    // for (int i = 0; i < s_numOfThreads; i++){  
+    //     if( pthread_create(&threads[i], &attr, threadJob, (void*)&info[i]) != 0 ){ // if returns 0 it's okay.
+    //         errorAndExit("pthread_create()");
+    //     }
+    // }
+
+    for (int i = 0; i < s_numOfThreads; i++){  
+        if( pthread_create(&threads[i], &attr, threadJob, NULL) != 0 ){
+            errorAndExit("pthread_create()");
+        }
+    }
+
+    for(int i = 0; i < s_numOfThreads; i++){
+        if( pthread_join(threads[i], NULL) != 0 ){
+            errorAndExit("pthread_join()");
+        }
+    }
+
+    if(didSigIntCome == 1 ){
+        write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
+        exit(EXIT_SUCCESS);
+    }
+
+    // Freeing allocated memory of matrix C and output matrix
+    exit(EXIT_SUCCESS);
+}
+
+void *threadJob(void *arg){
+    dprintf(STDOUT_FILENO, "(%s) Thread-%d is running\n", timeStamp(), pthread_self() );
+
+    // Using monitor for incoming connection from client
+    while(TRUE){
+        pthread_mutex_lock(&monitorMutex);
+        if( s_numOfConnectionsWaiting == 0 ){
+            pthread_cond_wait(&monitorCond, &monitorMutex);
+        }
+        s_numOfConnectionsWaiting--;
+        pthread_mutex_unlock(&monitorMutex);
+    }
+    
+    pthread_exit(NULL);
+}
+
 
 void tcpComm(){
     printf("(%s) Server is waiting\n", timeStamp());
@@ -84,8 +146,14 @@ void tcpComm(){
         // Wait until a client/servant connects
         if( (newServerSocketFd = accept(serverSocketFd, (struct sockaddr *)&address, &addresslength)) < 0)
             errorAndExit("Accept error\n");
-        if (newServerSocketFd > 0){
+        if (newServerSocketFd != -1 && newServerSocketFd != 0){
             // Add request to jobs çç
+            // addToQueue(newServerSocketFd);
+
+            // forwardIncomingConnection(newServerSocketFd);
+
+            // removeFromQueue(newServerSocketFd);
+
             pthread_mutex_lock(&csMutex);
             // add_request(serverSocket);
             printf("(%s) Server: Accepted\n", timeStamp());
@@ -107,8 +175,7 @@ void tcpComm(){
                 if(recv(newServerSocketFd, lastCityName, receivedInfoFromServant.cityName2Size, 0) < 0)
                     errorAndExit("Error receiving last city name");
 
-                printf("Server got: %d %d %d\n", receivedInfoFromServant.head, receivedInfoFromServant.tail, receivedInfoFromServant.portNoToUseLater);
-                printf("Got Cities %s %s\n", firstCityName, lastCityName);
+                printf("Server got: %d %d %d and got cities: %s %s\n", receivedInfoFromServant.head, receivedInfoFromServant.tail, receivedInfoFromServant.portNoToUseLater, firstCityName, lastCityName);
             }
             else if(clientOrServant == CLIENT){
                 int dataSize;
@@ -130,6 +197,20 @@ void tcpComm(){
 
     close(newServerSocketFd);
 
+}
+
+void forwardIncomingConnection(int newServerSocketFd){
+    // Forwarding the connection to the next available thread
+    int i;
+    for(i = 0; i < s_numOfThreads; i++){
+        if(!threads[i].isBusy){
+            threads[i].isBusy = 1;
+            threads[i].socketFd = newServerSocketFd;
+            break;
+        }
+    }
+    if(i == s_numOfThreads)
+        errorAndExit("No thread available");
 }
 
 static void exitingJob(){
@@ -157,71 +238,59 @@ void mySignalHandler(int signalNumber){
         didSigIntCome = 1;   // writing to static volative. If zero make it 1.
 }
 
-void createThreads(int portNo){
-    // Initializing mutex and conditional variable
-    pthread_mutex_init(&csMutex, NULL); 
-    pthread_mutex_init(&barrierMutex, NULL); 
-    pthread_cond_init(&barrierCond, NULL);
-    pthread_attr_t attr;
-    pthread_t threads[s_numOfThreads];
+// int checkWhichThreadIsNotBusy(){
+//     SgLinkedList *iterator = s_connectionQueue;
+//     while(iterator->next != NULL){
 
-    // set global thread attributes
-    pthread_attr_init(&attr);
-    pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+//     }
 
-    typedef int Info; //çç
-    Info info[s_numOfThreads];
-    memset(info, 0, sizeof(info));
 
-    // Creating threads
-    for (int i = 0; i < s_numOfThreads; i++){  
-        if( pthread_create(&threads[i], &attr, threadJob, (void*)&info[i]) != 0 ){ // if returns 0 it's okay.
-            errorAndExit("pthread_create()");
+
+//     if(threads[threadId].isBusy == 0)
+//         errorAndExit("Thread is not busy");
+// }
+
+void addToQueue(int newFileDesc){
+    pthread_mutex_lock(&csMutex);
+    // Creating a new SgLinkedList element
+    SgLinkedList *newElement = (SgLinkedList*)malloc(sizeof(SgLinkedList));
+    newElement->fileDesc = newFileDesc;
+    newElement->next = NULL;
+    if(s_connectionQueue == NULL){
+        s_connectionQueue = newElement;
+    }
+    else{
+        SgLinkedList *temp = s_connectionQueue;
+        while(temp->next != NULL){
+            temp = temp->next;
         }
+        temp->next = newElement;
     }
-
-    for(int i = 0; i < s_numOfThreads; i++){
-        if( pthread_join(threads[i], NULL) != 0 ){
-            errorAndExit("pthread_join()");
-        }
-    }
-
-    if(didSigIntCome == 1 ){
-        write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
-        exit(EXIT_SUCCESS);
-    }
-
-    // Freeing allocated memory of matrix C and output matrix
-    exit(EXIT_SUCCESS);
+    // incrementing the number of connections
+    ++s_numOfConnectionsWaiting;
+    // Value added to queue. Now we can unlock
+    pthread_mutex_unlock(&csMutex);
 }
 
-void *threadJob(void *arg){
-    // Info *infoArg = arg;
-    setbuf(stdout, NULL);
-
-    dprintf(STDOUT_FILENO, "(%s) Thread is running\n", timeStamp() );
-
-    // Barrier    
-    barrier();
-
-    // Part2
-    
-   pthread_exit(NULL);
-}
-
-void barrier(){
-    pthread_mutex_lock(&barrierMutex);
-    ++part1FinishedThreads;
-    while(TRUE){ // Not busy waiting. Using conditional variable + mutex for monitoring
-        if(part1FinishedThreads == s_numOfThreads /* Number of threads */){
-            part1FinishedThreads = 0;
-            pthread_cond_broadcast(&barrierCond); // signal to all threads to wake them up
+void removeFromQueue(int newFileId){
+    pthread_mutex_lock(&csMutex);
+    SgLinkedList *prev = NULL;
+    SgLinkedList *temp = s_connectionQueue;
+    while(temp != NULL){
+        if(temp->fileDesc == newFileId){
+            if(prev == NULL){
+                s_connectionQueue = temp->next;
+            }
+            else{
+                prev->next = temp->next;
+            }
+            free(temp);
+            s_numOfConnectionsWaiting--;
             break;
         }
-        else{
-            pthread_cond_wait(&barrierCond, &barrierMutex);
-            break;
-        }
+        prev = temp;
+        temp = temp->next;
     }
-    pthread_mutex_unlock(&barrierMutex);
+    --s_numOfConnectionsWaiting;
+    pthread_mutex_unlock(&csMutex);
 }
