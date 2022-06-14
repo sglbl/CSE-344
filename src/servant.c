@@ -112,10 +112,10 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
 
     // printDateLinkedList(cityList);
     SgCityLinkedList *iter = cityList;
-    char *cityName1 = cityList->cityName.data;
+    char *cityName1 = iter->cityName.data;
     for(int i = 0; i < tail - head; i++)
-        cityList = cityList->next;
-    char *cityName2 = cityList->cityName.data;
+        iter = iter->next;
+    char *cityName2 = iter->cityName.data;
 
     printf("(%s) Servant-%d: Loaded dataset, cities %s-%s\n", timeStamp(), getPidWithProp(), cityName1, cityName2);
     servantTcpCommWithServer(cityList, ipv4Adress, portNo, head, tail);
