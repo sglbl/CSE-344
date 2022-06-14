@@ -99,7 +99,7 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
             errorAndExit("opendir error while opening directory");
         while((ent = readdir(dir)) != NULL){
             if(strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0){
-                printf("entDname %s\n", ent->d_name);
+                // printf("entDname %s\n", ent->d_name);
                 cityIter->dateLL = addDateToLinkedList(cityIter->dateLL, ent->d_name);
                 cityIter->dateLL->transactions = calloc(1, sizeof(SgLinkedList));
                 cityIter->dateLL->transactions->next = NULL;
@@ -110,8 +110,14 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
         cityIter = cityIter->next;
     }
 
-    printDateLinkedList(cityList);
-    printf("Head is %d and tail is %d\n", head, tail);
+    // printDateLinkedList(cityList);
+    SgCityLinkedList *iter = cityList;
+    char *cityName1 = cityList->cityName.data;
+    for(int i = 0; i < tail - head; i++)
+        cityList = cityList->next;
+    char *cityName2 = cityList->cityName.data;
+
+    printf("(%s) Servant-%d: Loaded dataset, cities %s-%s\n", timeStamp(), getPidWithProp(), cityName1, cityName2);
     servantTcpCommWithServer(cityList, ipv4Adress, portNo, head, tail);
 }
 
@@ -173,8 +179,6 @@ void servantTcpCommWithServer(SgCityLinkedList *cityList, char *ipv4Adress, int 
         errorAndExit("Inet pton error with ip adress.\n");
     if( (servantSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0)
         errorAndExit("Error connecting to socket");
-
-    // addValuesToStruct(head, tail, cityList->cityName.data, cityList->cityName.data, procId, portNoToUseLater);
 
     while (TRUE){
         pthread_mutex_lock(&csMutex);

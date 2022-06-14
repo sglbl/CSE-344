@@ -10,6 +10,7 @@ compile:
 
 clean:
 	rm -f bin/server bin/servant bin/client
+#Kill code: kill -9 $(ps -C server -o pid=)
 
 for_debug:
 	gcc -pthread -g -Wall src/server.c src/common.c -lm -o bin/server
