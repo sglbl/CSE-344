@@ -147,13 +147,14 @@ void *threadJob(void *arg){
 
     // Using monitor for incoming connection from client/servant that's forwarded by main thread
     while(didSigIntCome != TRUE){
-        // dprintf(STDOUT_FILENO, "Thread-%ld is waiting for incoming connection\n", threadId);
         if( s_numOfConnectionsWaiting == 0 ){   // If no connection is waiting, wait for signal from main thread
             pthread_cond_wait(&monitorCond, &monitorMutex);
         }else{ // there is a connection waiting in queue
             pthread_mutex_lock(&csMutex);
+            printf("Thread id-%ld is handling connection\n", threadId);
             int newServerSocketFd = removeFromQueue();
             pthread_mutex_unlock(&csMutex);
+            printf("Thread id-%ld is removed queue from\n", threadId);
             handleIncomingConnection(newServerSocketFd);
         }
     }
@@ -186,7 +187,7 @@ void handleIncomingConnectionOfServant(int newServerSocketFd){
     if(recv(newServerSocketFd, lastCityName, receivedInfoFromServant.cityName2Size, 0) < 0)
         errorAndExit("Error receiving last city name");
 
-    printf("Server got from servant-> Cities: %d-%d portNo: %d, process id: %d and cities: %s %s\n", receivedInfoFromServant.head, receivedInfoFromServant.tail, receivedInfoFromServant.portNoToUseLater, receivedInfoFromServant.procId, firstCityName, lastCityName);
+    printf("(%s) Servant %d present at port %d and handling cities: %s-%s\n", timeStamp(), receivedInfoFromServant.procId, receivedInfoFromServant.portNoToUseLater, firstCityName, lastCityName);
     // Adding received information to linked list
     receivedInfoFromServant.cityName1 = firstCityName;
     receivedInfoFromServant.cityName2 = lastCityName;
@@ -223,7 +224,7 @@ void handleIncomingConnectionOfClient(int newServerSocketFd){
         // 1-find city name code in city list
         // 2-find servants that are responsible for the city
         // 3-give info to that servant with it's id
-        printf("Estate type is %s, begin %s end %s city %s\n", estateType, beginDate, endDate, cityName);
+        printf("(%s) Parsing: Estate type is %s, begin %s end %s city %s\n", timeStamp(), estateType, beginDate, endDate, cityName);
         // find city name code in city list
         int responsibleServant = -1; 
         findResponsibleServant(cityName, &responsibleServant);
@@ -264,11 +265,11 @@ int getTransactionCountFromServant(int singleCityHandle, int responsibleServant,
     // Connecting to socket of servant
     struct sockaddr_in serverSocketAdressInfo;
     serverSocketAdressInfo.sin_family = AF_INET;
-    printf("Portno trying to get is %d\n", portNo);
+    printf("(%s) Server created a socket to handle servant comm with port no %d\n", timeStamp(), portNo);
     serverSocketAdressInfo.sin_port = htons(portNo);
     // serverSocketAdressInfo.sin_addr.s_addr = INADDR_ANY;
     char *s_ipv4 = "127.0.0.1"; // çç
-    if (inet_pton(AF_INET, s_ipv4, &serverSocketAdressInfo.sin_addr) <= 0)  //çç
+    if (inet_pton(AF_INET, s_ipv4, &serverSocketAdressInfo.sin_addr) <= 0)
         errorAndExit("Inet pton error with ip adress.\n");
 
     if( (newSocketFdForThread = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0){
@@ -333,7 +334,6 @@ void dateParser(char *date, int *dateArray){
 void findResponsibleServant(char *cityName, int *responsibleServant){
     int found = FALSE;
     // check every servants info in list and find the city code and responsible servant
-    printf("(%s) Cityname is %s and trying to find which servant is responsible for it\n", timeStamp(), cityName);
     // checking s_servantInfoList to find about the responsible servant for the city with comparing cityName with cityName1 and cityName2
     ServantSendingInfo *currentServantInfo = s_servantInfoList;
     if(currentServantInfo == NULL)
@@ -345,10 +345,14 @@ void findResponsibleServant(char *cityName, int *responsibleServant){
         if(strncmp(currentServantInfo->cityName1, cityName, strlen(currentServantInfo->cityName1) ) <= 0
         && strncmp(currentServantInfo->cityName2, cityName, strlen(currentServantInfo->cityName2) ) >= 0){
             *responsibleServant = currentServantInfo->procId;
-            printf("(%s) Responsible servant founded the city \"%s\" and it's servant number %d\n", timeStamp(), cityName, currentServantInfo->procId);
+            // printf("(%s) Responsible servant founded the city \"%s\" and it's servant number %d\n", timeStamp(), cityName, currentServantInfo->procId);
+            printf("(%s) Contacting servant %d", timeStamp(), currentServantInfo->procId);
             found = TRUE; break;
         }
         currentServantInfo = currentServantInfo->next;
+    }
+    if(found == FALSE){
+        printf("(%s) Responsible servant couldn't found the city \"%s\" in its data structure\n", timeStamp(), cityName);
     }
 
 }
