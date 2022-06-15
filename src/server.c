@@ -20,7 +20,7 @@ static int s_numOfConnectionsWaiting = 0;   // Number of connections waiting for
 static int s_numOfThreads, s_portNo;    // Number of threads and port number
 static volatile sig_atomic_t didSigIntCome = 0; // sigint signal flag
 static pthread_mutex_t csMutex;         // critical section mutex
-static pthread_mutex_t monitorMutex;    // Mutex for monitor
+static pthread_mutex_t adderMutex;    // Mutex for monitor
 static pthread_cond_t monitorCond;      // Conditional variable for monitor thread
 static SgLinkedList *s_connectionQueue; // Queue of coming connections
 ServantSendingInfo *s_servantInfoList; // Holds information that initially received from servant (id, port, cities responsible of)
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]){
 void createThreads(int portNo){
     // Initializing mutex and conditional variable
     pthread_mutex_init(&csMutex, NULL); 
-    // pthread_mutex_init(&monitorMutex, NULL); 
+    pthread_mutex_init(&adderMutex, NULL); 
     pthread_cond_init(&monitorCond, NULL);
     pthread_attr_t attr;
     pthread_t threads[s_numOfThreads];
@@ -130,11 +130,15 @@ void *tcpComm(){ /* Job of main thread */
         // Wait until a client/servant connects
         if( (newServerSocketFd = accept(serverSocketFd, (struct sockaddr *)&address, &addresslength)) < 0)
             errorAndExit("Accept error\n");
+        if(didSigIntCome == 1 ){
+            write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
+            exit(EXIT_SUCCESS);
+        }
         if (newServerSocketFd != -1 && newServerSocketFd != 0){ // if connection comes
-            pthread_mutex_lock(&csMutex); // Lock mutex 
+            pthread_mutex_lock(&adderMutex); // Lock mutex 
             addToQueue(newServerSocketFd);  // As soon as it will be added to queue, child will take care of it.
             pthread_cond_signal(&monitorCond); // signal to condition variable in child thread to wake up for new connection
-            pthread_mutex_unlock(&csMutex); // Unlock mutex
+            pthread_mutex_unlock(&adderMutex); // Unlock mutex
         }
     }
 
@@ -147,16 +151,26 @@ void *threadJob(void *arg){
 
     // Using monitor for incoming connection from client/servant that's forwarded by main thread
     while(didSigIntCome != TRUE){
-        if( s_numOfConnectionsWaiting == 0 ){   // If no connection is waiting, wait for signal from main thread
-            pthread_cond_wait(&monitorCond, &monitorMutex);
-        }else{ // there is a connection waiting in queue
-            pthread_mutex_lock(&csMutex);
-            printf("Thread id-%ld is handling connection\n", threadId);
-            int newServerSocketFd = removeFromQueue();
-            pthread_mutex_unlock(&csMutex);
-            printf("Thread id-%ld is removed queue from\n", threadId);
-            handleIncomingConnection(newServerSocketFd);
+        pthread_mutex_lock(&csMutex);
+        while(s_numOfConnectionsWaiting == 0){   // If no connection is waiting, wait for signal from main thread
+            // printf("before cond\n");
+            pthread_cond_wait(&monitorCond, &csMutex);
+            // printf("After cond\n");
+            if(didSigIntCome == TRUE){
+                pthread_mutex_unlock(&csMutex);
+                write(STDOUT_FILENO, "Successfully exiting with SIGINT\n", 33);
+                exit(EXIT_SUCCESS);
+            }
         }
+
+        printf("Thread id-%ld is handling connection\n", threadId);
+        int newServerSocketFd = removeFromQueue();
+        pthread_mutex_unlock(&csMutex);
+        // pthread_cond_signal(&monitorCond);
+        // printf("Thread id-%ld is removed from queue\n", threadId);
+        // pthread_mutex_unlock(&csMutex);
+        handleIncomingConnection(newServerSocketFd);
+        
     }
     
     pthread_exit(NULL);
@@ -219,6 +233,7 @@ void handleIncomingConnectionOfClient(int newServerSocketFd){
     if(cityName == NULL || strcmp(cityName, "") == 0 || strcmp(cityName, " ") == 0 ){
         // city name is empty so all servants will be asked to serve the request
         cityName = "-";
+        printf("city is not provided\n");
         // çç
     }else{ // city name is not empty so only servants that are responsible for the city will be asked to serve the request
         // 1-find city name code in city list

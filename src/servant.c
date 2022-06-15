@@ -314,15 +314,25 @@ void *handleIncomingConnection(void *arg){
     
     printf("Estate type: %s, city: %s\n", estateType, cityName);
 
+    // compute and make it receive
+    int beginningDate = gettingInfo->beginYear*365 + gettingInfo->beginMonth*30 + gettingInfo->beginDay;
+    int endingDate = gettingInfo->endYear*365 + gettingInfo->endMonth*30 + gettingInfo->endDay;
+    // checking the data structures of files between these days 
+    
 
-    // if( strncmp(gettingInfo->city.data, "-", 1) == 0){ // if city is not specified
-    //     // search for all cities that this servant handles
-    // }
-    // else{ // if city is specified
-    //     // search for all estates that this servant handles in this city
-    //     printf("City is specified and sdir is %s\n", s_dirpath );
-    //     printf("beginDate is %d %d %d\n", beginDate[0], beginDate[1], beginDate[2]);
-    // }
+
+
+    if( strncmp(cityName, "-", 1) == 0 || cityName == NULL){ // if city is not specified
+        // search for all cities that this servant handles
+    }
+    else{ // if city is specified
+        // search for all estates that this servant handles in this city
+        printf("City is specified and sdir is %s\n", s_dirpath );
+        // checking data structure held on this city
+        
+
+        
+    }
 
     return NULL;
 }
