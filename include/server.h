@@ -4,6 +4,7 @@
 	@author Suleyman Golbol
 	@number 1801042656
 */
+#include "common.h"
 
 /* Creates threads */
 void createThreads(int portNo);
@@ -20,8 +21,10 @@ void handleIncomingConnection(int newServerSocketFd);
 
 void addToQueue(int newFileDesc);
 
-// void removeFromQueue(int newFileDesc);
+void addServantInfoToList(ServantSendingInfo receivedInfoFromServant);
 
 int removeFromQueue();
+
+void findCityCodeAndResponsibleServant(char *cityName, int *cityCode, int *responsibleServant);
 
 #endif

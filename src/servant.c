@@ -16,6 +16,7 @@
 #include "../include/servant.h"
 #include "../include/common.h"
 
+static char *s_dirpath = "./";
 static int handledRequests = 0;
 static int portNoToListen = 59161;
 static volatile sig_atomic_t didSigIntCome = 0;
@@ -52,6 +53,7 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+    s_dirpath = dirPath;
     signalHandlerInitializer();
     pthread_mutex_init(&csMutex, NULL); // Initialize mutex
     doServantJob(dirPath, citiesToHandle, ipv4, portNo);
@@ -102,6 +104,9 @@ void doServantJob(char *dirPath, char *citiesToHandle, char *ipv4Adress, int por
             if(strncmp(allTheEntities[i]->d_name, ".",1) != 0 && strncmp(allTheEntities[i]->d_name, "..",2) != 0){
                 // printf("dname %s\n", allTheEntities[i]->d_name);
                 cityIter->dateLL = addDateToLinkedList(cityIter->dateLL, allTheEntities[i]->d_name);
+                cityIter->dateLL->transactions = calloc(1, sizeof(SgLinkedList));
+                cityIter->dateLL->transactions->next = NULL;
+                readFileOfTranscations(cityIter->dateLL->transactions, cityDirPath/*City directory*/, allTheEntities[i]->d_name/*date*/);
             }
             free(allTheEntities[i]);
         }
@@ -212,10 +217,8 @@ void servantTcpCommWithServerToSend(SgCityLinkedList *cityList, char *ipv4Adress
 
     pthread_mutex_lock(&csMutex);
     int iAmServant = SERVANT;
-    printf("st1\n");
     if(send(serverSocketFd, &iAmServant, sizeof(int), 0) == -1)
         errorAndExit("Error sending client info\n");
-    printf("st2\n");
     // Sending information of servant to the server
     ServantSendingInfo sendingInfo;
     char *cityName1 = cityList->cityName.data;
@@ -247,7 +250,7 @@ void servantTcpCommWithServerToSend(SgCityLinkedList *cityList, char *ipv4Adress
         exit(EXIT_SUCCESS);
     }
 
-    close(servantSocketFd);
+    // close(servantSocketFd);
     servantTcpCommWithServerToGet(cityList, ipv4Adress, portNoToListen, head, tail);
 }
 
@@ -273,46 +276,62 @@ void servantTcpCommWithServerToGet(SgCityLinkedList *cityList, char *ipv4Adress,
     if (inet_pton(AF_INET, ipv4Adress, &serverSocketAdressInfo.sin_addr) <= 0) 
         errorAndExit("Inet pton error with ip adress.\n");
     if( (servantSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0)
-        errorAndExit("Error connecting to socket");
+        errorAndExit("Error connecting to socket to get");
 
-    pthread_mutex_lock(&csMutex);
-    int iAmServant = SERVANT;
-    printf("st1\n");
-    if(send(serverSocketFd, &iAmServant, sizeof(int), 0) == -1)
-        errorAndExit("Error sending client info\n");
-    printf("st2\n");
-    // Sending information of servant to the server
-    ServantSendingInfo sendingInfo;
-    char *cityName1 = cityList->cityName.data;
-    for(int i = 0; i < tail - head; i++)
-        cityList = cityList->next;
-    char *cityName2 = cityList->cityName.data;
+    while(TRUE){
+        // Receiving data from server
+        int dataSize = 0;
+        ServantGettingInfo gettingInfo;
+        if(recv(serverSocketFd, &gettingInfo, sizeof(ServantGettingInfo), 0) == -1)
+            errorAndExit("Error sending data\n");
 
-    sendingInfo.head = head; 
-    sendingInfo.tail = tail;
-    sendingInfo.procId = procId;
-    sendingInfo.portNoToUseLater = portNoToListen;
-    // Sending city name sizes with +1 because of '\0' character
-    sendingInfo.cityName1Size = strlen(cityName1) + 1;
-    sendingInfo.cityName2Size = strlen(cityName2) + 1;
+        // create a new thread to handle incoming connections
+        pthread_t thread;
+        if(pthread_create(&thread, NULL, handleIncomingConnection, (void *)&gettingInfo) < 0)
+            errorAndExit("Error creating thread");
+        if(pthread_detach(thread) < 0)
+            errorAndExit("Error detaching thread");
 
-    if(send(serverSocketFd, &sendingInfo, sizeof(ServantSendingInfo), 0) == -1)
-        errorAndExit("Error while sending data");
-
-    // send first city name that this servant is handling
-    if(send(serverSocketFd, cityName1, sendingInfo.cityName1Size, 0) == -1)
-        errorAndExit("Error sending data\n");
-    // send last city name that this servant is handling
-    if(send(serverSocketFd, cityName2, sendingInfo.cityName2Size, 0) == -1)
-        errorAndExit("Error sending data\n");
-
-    pthread_mutex_unlock(&csMutex);
-    if(didSigIntCome == 1){
-        dprintf(STDOUT_FILENO, "(%s) Servant-%d: Received SIGINT, exiting\n", timeStamp(), procId);
-        exit(EXIT_SUCCESS);
+        if(didSigIntCome == 1){
+            dprintf(STDOUT_FILENO, "(%s) Servant-%d: Received SIGINT, exiting\n", timeStamp(), procId);
+            exit(EXIT_SUCCESS);
+        }
     }
 
     close(servantSocketFd);
+}
+
+void *handleIncomingConnection(void *arg){
+    ServantGettingInfo *gettingInfo = (ServantGettingInfo *)arg;
+    // String beginDate = gettingInfo->beginDate;
+    // String endDate = gettingInfo->endDate;
+    String estateType = gettingInfo->estateType;
+    String city = gettingInfo->city;
+
+    int beginDate[3];
+    int endDate[3];
+    dateParser(gettingInfo->beginDate.data, beginDate);
+    dateParser(gettingInfo->endDate.data, endDate);
+
+    if( strncmp(gettingInfo->city.data, "-", 1) == 0){ // if city is not specified
+        // search for all cities that this servant handles
+    }
+    else{ // if city is specified
+        // search for all estates that this servant handles in this city
+        printf("sdir %s\n", s_dirpath );
+    }
+
+
+}
+
+void dateParser(char *date, int *dateArray){
+    char *token = strtok(date, "-");
+    int i = 0;
+    while(token != NULL){
+        dateArray[i] = atoi(token);
+        token = strtok(NULL, "-");
+        i++;
+    }
 }
 
 int getPidWithProp(){

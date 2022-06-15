@@ -12,15 +12,25 @@
 #define CLIENT 1
 #define SERVANT 2
 
-typedef struct ServantSendingInfo{
-    int head, tail, procId, portNoToUseLater;
-    int cityName1Size, cityName2Size;
-    // char *cityName1, *cityName2; # sending pointer dwon't work
-} ServantSendingInfo;
-
 typedef struct String {
     char *data;
 } String;
+
+typedef struct ServantSendingInfo{
+    int head, tail, procId, portNoToUseLater;
+    int cityName1Size, cityName2Size;
+    char *cityName1, *cityName2;
+    struct ServantSendingInfo *next;
+} ServantSendingInfo;
+
+typedef struct ServantGettingInfo{
+    String beginDate, endDate;
+    String estateType, city;
+} ServantGettingInfo;
+
+typedef struct Date{
+    int day, month, year;
+} Date;
 
 typedef struct SgLinkedList{
     int fileDesc, isBusy;

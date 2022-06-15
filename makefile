@@ -6,13 +6,19 @@ compile:
 	gcc -pthread -Wall -std=gnu17 src/client.c src/common.c -lm -o bin/client
 # ./bin/servant -d dataset/HATAY -c 1-9 -r 127.0.0.1 -p 33000
 # ./bin/server -p 33000 -t 11
-# ./bin/client -r ../requestFile -q 33000 -s 127.0.0.1
+# ./bin/client -r requestFile -q 33000 -s 127.0.0.1
 
 clean:
 	rm -f bin/server bin/servant bin/client
 
 kill: # kills all servers
 	ps -C server -o pid= | xargs kill -9
+	gcc -pthread -Wall -std=gnu17 src/server.c src/common.c -lm -o bin/server
+	gcc -pthread -Wall -std=gnu17 src/servant.c src/common.c -lm -o bin/servant
+	gcc -pthread -Wall -std=gnu17 src/client.c src/common.c -lm -o bin/client
+
+kill2: # kills all servers
+	ps -C client -o pid= | xargs kill -9
 	gcc -pthread -Wall -std=gnu17 src/server.c src/common.c -lm -o bin/server
 	gcc -pthread -Wall -std=gnu17 src/servant.c src/common.c -lm -o bin/servant
 	gcc -pthread -Wall -std=gnu17 src/client.c src/common.c -lm -o bin/client

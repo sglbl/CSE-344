@@ -209,7 +209,7 @@ void clientTcpCommWithServer(char *data, int threadNo){
         pthread_mutex_unlock(&csMutex);
         int response;
         if(recv(serverSocketFd, &response, sizeof(int), 0) < 0){
-            errorAndExit("Error receiving head information");
+            errorAndExit("Error receiving response information");
         }
 
         // printf("(%s) Client: Data sent\n", timeStamp());
