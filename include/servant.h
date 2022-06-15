@@ -61,8 +61,6 @@ int getPidWithProp();
 
 SgDateLinkedList *sortDates(SgDateLinkedList *cityIter);
 
-void dateParser(char *date, int *dateArray);
-
 void *handleIncomingConnection(void *arg);
 
 #endif

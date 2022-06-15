@@ -24,8 +24,12 @@ typedef struct ServantSendingInfo{
 } ServantSendingInfo;
 
 typedef struct ServantGettingInfo{
-    String beginDate, endDate;
-    String estateType, city;
+    int beginDay, beginMonth, beginYear;
+    int endDay, endMonth, endYear;
+    int cityHandleType;
+    // int estateSize;
+    int structSize;
+    char estateTypeAndCity[];
 } ServantGettingInfo;
 
 typedef struct Date{

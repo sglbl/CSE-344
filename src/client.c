@@ -189,12 +189,15 @@ void clientTcpCommWithServer(char *data, int threadNo){
     struct sockaddr_in serverSocketAdressInfo;
     serverSocketAdressInfo.sin_family = AF_INET;
     serverSocketAdressInfo.sin_port = htons(s_portNo);
-    serverSocketAdressInfo.sin_addr.s_addr = INADDR_ANY;
+    // serverSocketAdressInfo.sin_addr.s_addr = INADDR_ANY;
+    if (inet_pton(AF_INET, s_ipv4, &serverSocketAdressInfo.sin_addr) <= 0) 
+        errorAndExit("Inet pton error with ip adress.\n");
+
     if( (clientSocketFd = connect(serverSocketFd, (struct sockaddr *)&serverSocketAdressInfo, sizeof(serverSocketAdressInfo))) < 0){
         errorAndExit("Error connecting to socket");
     }
     else{
-        pthread_mutex_lock(&csMutex);
+        // pthread_mutex_lock(&csMutex);
         int iAmClient = CLIENT;
         if(send(serverSocketFd, &iAmClient, sizeof(int), 0) == -1){
             errorAndExit("Error sending client info\n");
@@ -206,13 +209,20 @@ void clientTcpCommWithServer(char *data, int threadNo){
         if(send(serverSocketFd, data, dataSize, 0) == -1){
             errorAndExit("Error sending data\n");
         }
-        pthread_mutex_unlock(&csMutex);
+        // pthread_mutex_unlock(&csMutex);
         int response;
         if(recv(serverSocketFd, &response, sizeof(int), 0) < 0){
             errorAndExit("Error receiving response information");
         }
+        if(response == -1){
+            printf("(%s) Client-Thread-%d: \"%s\" -> Error, no servant can satisfy this request because city couldn't be found\n", timeStamp(), threadNo, data);
+        }
+        else{
+            printf("(%s) Client-Thread-%d: Request was successful\n", timeStamp(), threadNo);
+            // getting the response
 
-        // printf("(%s) Client: Data sent\n", timeStamp());
+        }
+
     }
     s_clientSocketFd = clientSocketFd; //çç to close
     // close(clientSocketFd);
