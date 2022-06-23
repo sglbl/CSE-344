@@ -1,0 +1,10 @@
+begin
+str2
+str4
+str2
+sstr5
+str6
+str6
+str7
+str7x
+str7
