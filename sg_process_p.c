@@ -164,7 +164,7 @@ void collectOutputFromChildren(char *filePath){
     lseek(fileDescOfOutputFile, 0, SEEK_SET);
     fileSize /= sizeof(double);
 
-    // // Create an double array to store the output of the children.
+    // Create an double array to store the output of the children.
     double **output = (double**)calloc( fileSize / 9 , sizeof(double*) );
     for(int i = 0; i < fileSize / 9; i++){
         output[i] = (double*)calloc( 9 , sizeof(double*) );
