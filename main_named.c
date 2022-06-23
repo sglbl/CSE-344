@@ -38,7 +38,7 @@ int main(int argc, char *argv[]){
     }
 
     arrayStorer(inputFilePath, name);
-    problemHandler();
+    problemHandler(name);
 
     // Unblocking signals
     if( sigprocmask(SIG_UNBLOCK, &oldSetMask, NULL) == -1 ){

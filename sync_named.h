@@ -10,6 +10,7 @@
 #define FALSE 0
 #define NUMBER_OF_CHEFS 6
 #define NUMBER_OF_INGREDIENTS 4
+#define NUMBER_OF_SEMAPHORES 18
 
 typedef struct SharedMemory {
     int numberOfLines;
@@ -49,6 +50,8 @@ void wholesalerProcess(pid_t pidsFromFork[]);
 
 /* Converts initial of ingredient to string */
 char *stringConverter(char character);
+
+char *sg_itoa(int number);
 
 /* Pushers for ingredients */
 void pusherMilk();

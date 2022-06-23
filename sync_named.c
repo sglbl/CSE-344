@@ -10,7 +10,7 @@
 #include <semaphore.h> // Semaphore
 #include "sync_named.h"
 
-SharedMemory *sharedMemory;
+static SharedMemory *sharedMemory;
 static sem_t *signalToChef[NUMBER_OF_CHEFS];
 static sem_t *accessing, *milk, *flour, *walnut, *sugar;
 static sem_t *walnutAndFlourSignal, *walnutAndSugarSignal, *walnutAndMilkSignal, *milkAndSugarSignal, *milkAndFlourSignal, *flourAndSugarSignal;
@@ -18,6 +18,7 @@ static sem_t *dessertPrepared, *childReturned;
 static int lineNumber = 0;
 static char (*ingredientsInFile)[2];
 static volatile sig_atomic_t signalFlag = 0; // Flag for signal handling
+static char *names[NUMBER_OF_SEMAPHORES];
 
 void signalHandlerInitializer(){
     // Initializing siggal action for SIGINT signal.
@@ -42,8 +43,9 @@ void arrayStorer(char* inputFilePath, char *name){
     struct stat statOfFile;                 // Adress of statOfFile will be sent to stat() function in order to get size information of file.
     int fileDesc;
     if( stat(inputFilePath, &statOfFile) < 0){
+        dprintf(STDOUT_FILENO,"Error while opening file to read. ");
         dprintf(STDERR_FILENO, "Usage: ./hw3named -i inputFilePath -n name\n");
-        errorAndExit("Error while opening file to read. ");
+        exit(EXIT_FAILURE);
     }
 
     // Opening file in read mode
@@ -93,83 +95,97 @@ void arrayStorer(char* inputFilePath, char *name){
     sharedMemory->ingredients[0] = ingredientsInFile[0][0];
     sharedMemory->ingredients[1] = ingredientsInFile[0][1];
     lineNumber = 1;
+
+    // Saving semaphore names to array with char *name
+    for(int i = 0; i < NUMBER_OF_SEMAPHORES; i++){
+        names[i] = calloc(strlen(name) + 2, sizeof(char));
+        strcpy(names[i], name);
+        char *temp = sg_itoa(i);
+        strcat(names[i], temp);
+        free(temp);
+    }
+
 }
 
 void semaphoreInitializer(){
     // Initialization of semaphore
-    if( (signalToChef[0] = sem_open("/signalToChef0", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (signalToChef[0] = sem_open(names[0], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Error while opening semaphore ");
-    if( (signalToChef[1] = sem_open("/signalToChef1", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (signalToChef[1] = sem_open(names[1], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Error while opening semaphore ");
-    if( (signalToChef[2] = sem_open("/signalToChef2", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (signalToChef[2] = sem_open(names[1], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Error while opening semaphore ");
-    if( (signalToChef[3] = sem_open("/signalToChef3", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (signalToChef[3] = sem_open(names[2], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Error while opening semaphore ");
-    if( (signalToChef[4] = sem_open("/signalToChef4", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (signalToChef[4] = sem_open(names[3], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Error while opening semaphore ");
-    if( (signalToChef[5] = sem_open("/signalToChef5", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (signalToChef[5] = sem_open(names[4], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Error while opening semaphore ");
-    if( (accessing = sem_open("/accessing", O_CREAT,  0644, 1)) == SEM_FAILED )
+    if( (accessing = sem_open(names[5], O_CREAT,  0644, 1)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
 
-    if( (milk = sem_open("/milk", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (milk = sem_open(names[6], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (flour = sem_open("/flour", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (flour = sem_open(names[7], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (sugar = sem_open("/sugar", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (sugar = sem_open(names[8], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (walnut = sem_open("/walnut", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (walnut = sem_open(names[9], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
 
-    if( (milkAndFlourSignal = sem_open("/milkAndFlourSignal", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (milkAndFlourSignal = sem_open(names[10], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (flourAndSugarSignal = sem_open("/flourAndSugarSignal", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (flourAndSugarSignal = sem_open(names[11], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (milkAndSugarSignal = sem_open("/milkAndSugarSignal", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (milkAndSugarSignal = sem_open(names[12], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (walnutAndFlourSignal = sem_open("/walnutAndFlourSignal", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (walnutAndFlourSignal = sem_open(names[13], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (walnutAndMilkSignal = sem_open("/walnutAndMilkSignal", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (walnutAndMilkSignal = sem_open(names[14], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (walnutAndSugarSignal = sem_open("/walnutAndSugarSignal", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (walnutAndSugarSignal = sem_open(names[15], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (dessertPrepared = sem_open("/dessertPrepared", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (dessertPrepared = sem_open(names[16], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
-    if( (childReturned = sem_open("/childReturned", O_CREAT,  0644, 0)) == SEM_FAILED )
+    if( (childReturned = sem_open(names[17], O_CREAT,  0644, 0)) == SEM_FAILED )
         errorAndExit("Semaphore initialize error ");
 }
 
 void closeSemaphores(){
-    sem_close(signalToChef[0]); sem_unlink("/signalToChef0");
-    sem_close(signalToChef[1]); sem_unlink("/signalToChef1");
-    sem_close(signalToChef[2]); sem_unlink("/signalToChef2");
-    sem_close(signalToChef[3]); sem_unlink("/signalToChef3");
-    sem_close(signalToChef[4]); sem_unlink("/signalToChef4");
-    sem_close(signalToChef[5]); sem_unlink("/signalToChef5");
 
-    sem_close(accessing); sem_unlink("/accessing");
-    sem_close(milk); sem_unlink("/milk");
-    sem_close(sugar); sem_unlink("/sugar");
-    sem_close(walnut); sem_unlink("/walnut");
-    sem_close(flour); sem_unlink("/flour");
+    for(int i = 0; i < NUMBER_OF_SEMAPHORES; i++)
+        if( sem_unlink(names[i]) == -1 )
+            errorAndExit("Error while unlinking semaphores");
 
-    sem_close(milkAndFlourSignal); sem_unlink("/milkAndFlourSignal");
-    sem_close(flourAndSugarSignal); sem_unlink("/flourAndSugarSignal");
-    sem_close(milkAndSugarSignal); sem_unlink("/milkAndSugarSignal");
-    sem_close(walnutAndFlourSignal); sem_unlink("/walnutAndFlourSignal");
-    sem_close(walnutAndMilkSignal); sem_unlink("/walnutAndMilkSignal");
-    sem_close(walnutAndSugarSignal); sem_unlink("/walnutAndSugarSignal");
+    for(int i = 0; i < NUMBER_OF_CHEFS; i++)
+        if( sem_close(signalToChef[i]) == -1 )
+            errorAndExit("Error while closing signalToChef semaphores");
 
-    sem_close(dessertPrepared);        sem_unlink("/dessertPrepared");
-    int rw = sem_close(childReturned); sem_unlink("/childReturned");
-    if(rw == -1)
-        errorAndExit("Error while closing semaphore ");
+    if(sem_close(accessing) < 0) errorAndExit("Error while closing accessing semaphore");
+    if(sem_close(milk) < 0)       errorAndExit("Error while closing milk semaphore");
+    if(sem_close(sugar) < 0)      errorAndExit("Error while closing sugar semaphore");
+    if(sem_close(walnut) < 0)     errorAndExit("Error while closing walnut semaphore");
+    if(sem_close(flour) < 0)      errorAndExit("Error while closing flour semaphore");
+
+    if(sem_close(milkAndFlourSignal) < 0) errorAndExit("Error while closing milkAndFlourSignal semaphore");
+    if(sem_close(flourAndSugarSignal) < 0) errorAndExit("Error while closing flourAndSugarSignal semaphore");
+    if(sem_close(milkAndSugarSignal) < 0) errorAndExit("Error while closing milkAndSugarSignal semaphore");
+    if(sem_close(walnutAndFlourSignal) < 0) errorAndExit("Error while closing walnutAndFlourSignal semaphore");
+    if(sem_close(walnutAndMilkSignal) < 0) errorAndExit("Error while closing walnutAndMilkSignal semaphore");
+    if(sem_close(walnutAndSugarSignal) < 0) errorAndExit("Error while closing walnutAndSugarSignal semaphore");
+
+    if(sem_close(dessertPrepared) < 0) errorAndExit("Error while closing dessertPrepared semaphore");
+    if(sem_close(childReturned) < 0) errorAndExit("Error while closing childReturned semaphore");
+
 }
 
 void whileExiting(){
     // This function is called when the program is exit() is called
     closeSemaphores();
     free(ingredientsInFile);
+    for(int i = 0; i < NUMBER_OF_SEMAPHORES; i++)
+        free(names[i]);
+    
 }
 
 void problemHandler(){
@@ -362,6 +378,7 @@ int chef(int chefNumber){
             // return counter;
             // https://man7.org/linux/man-pages/man3/exit.3.html 
             // As it says here; with exit(), least significant byte of status (i.e., status & 0xFF) is RETURNed to the parent
+            // free(ingredientsInFile); //çç
             exit(counter & 0XFF); 
         }
     }
@@ -454,7 +471,6 @@ void pusherWalnut(){
         sharedMemory->isWalnut = 1;
 
     sem_post(accessing);
-
 }
 
 void errorAndExit(char *errorMessage){
@@ -468,4 +484,27 @@ char *stringConverter(char character){
     if(character == 'M') return "milk";
     if(character == 'F') return "flour";
     else return "error";
+}
+
+char *sg_itoa(int number){
+    if(number == 0){
+        char* string = calloc(2, sizeof(char));
+        string[0] = '0';    string[1] = '\0';
+        return string;
+    }
+    int digitCounter = 0;
+    int temp = number;
+    while(temp != 0){
+        temp /= 10;
+        digitCounter++;
+    }
+    
+    char* string = calloc(digitCounter + 1, sizeof(char) );
+    for(int i = 0; i < digitCounter; i++){
+        char temp = (number % 10) + '0';
+        string[digitCounter-i-1] = temp;
+        number /= 10;
+    }
+    string[digitCounter] = '\0';
+    return string;
 }

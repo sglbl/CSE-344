@@ -57,7 +57,7 @@ void arrayStorer(char* inputFilePath){
     }
 
     int size = statOfFile.st_size/2;
-    ingredientsInFile = calloc(size, sizeof(char)); // Allocating memory for ingredients array
+    ingredientsInFile = calloc(size*2, sizeof(char)); // Allocating memory for ingredients array
     
     for(int i = 0; i<size; i++){
         if( read(fileDesc, ingredientsInFile[i], 2) == -1 && errno == EINTR )
@@ -186,11 +186,12 @@ void problemHandler(){
             if(waitpidReturnVal  < 0)   
                 errorAndExit("Error while using waitpid\n");
             if( waitpidReturnVal == pidsFromFork[NUMBER_OF_INGREDIENTS+i] && WIFEXITED(status) ){
-                // printf("+-+-Child process %d exited with status %d, WEXITSTATUS %d, status >> 8 is %d, status&0xff %d\n", 
+                // dprintf(STDOUT_FILENO,"+-+-Child process %d exited with status %d, WEXITSTATUS %d, status >> 8 is %d, status&0xff %d\n", 
                 //                     pid, status, WEXITSTATUS(status), status >> 8, status & 0xFF);
                 totalNumberOfDesserts += WEXITSTATUS(status); //  This macro evaluates to the low-order 8 bits of the status. (Same with status >> 8)
             }
         }
+        free(ingredientsInFile[0]);
         dprintf(STDOUT_FILENO, "\nThe wholesaler (pid %d) is done (Total desserts: %d)\n", getpid(), totalNumberOfDesserts);
     }
 
@@ -310,10 +311,11 @@ int chef(int chefNumber){
         if(signalFlag == 1){
             // sem_wait() function is interruptible by a signal. So, last ++counter comes eventually. (--counter is needed)
             --counter; 
-            printf("Chef%d (pid %d) is exiting...\n", chefNumber, getpid());
+            dprintf(STDOUT_FILENO,"Chef%d (pid %d) is exiting...\n", chefNumber, getpid());
             // return counter;
             // https://man7.org/linux/man-pages/man3/exit.3.html 
             // As it says here; with exit(), least significant byte of status (i.e., status & 0xFF) is RETURNed to the parent
+            free(ingredientsInFile[0]);
             exit(counter & 0XFF); 
         }
     }

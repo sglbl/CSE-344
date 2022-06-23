@@ -18,4 +18,8 @@ run_named:
 	gcc -Wall main_named.c sync_named.c -o hw3named
 	./hw3named -i files/inputFile.txt -n name
 
+run_named_valgrind:
+	gcc -g -Wall main_named.c sync_named.c -o hw3named
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes  ./hw3named -i files/inputFile.txt -n name
+
 # Suleyman Golbol 1801042656
