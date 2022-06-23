@@ -24,7 +24,7 @@ int main(int argc, char *argv[]){
     if(argc != 3)
         printErrorAndExit();    
     
-    // OPENING FILE ON READ ONLY MODE
+    // OPENING FILE ON READ WRITE MODE
     if( (fileDesc = open(filePath, O_RDWR , S_IWGRP)) == -1 ){
         perror("Error while opening the file to read.\n");
         exit(2);
