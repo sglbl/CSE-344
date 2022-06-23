@@ -1,7 +1,7 @@
 target: compile
 
 compile:
-	gcc -Wall main.c additional.c -o hw4
+	gcc -pthread -Wall main.c additional.c -o hw4
 
 run:
 	gcc -Wall *.c -o hw4

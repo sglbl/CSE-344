@@ -23,7 +23,7 @@ int main(int argc, char *argv[]){
                 filePath = optarg;
                 break;
             default:
-                write(STDERR_FILENO, "Error with arguments\nUsage: ./hw4 -C 10 -N 5 -F inputfilePath\n", 62);
+                write(STDERR_FILENO, "Error with arguments\nUsage: ./hw4 -C consumerNum -N loopNum -F inputfilePath\n", 77);
                 exit(EXIT_FAILURE);
         }
     }
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]){
 
     struct stat statOfFile;  //Adress of statOfFile will be sent to stat() function in order to get size information of file.
     if(stat(filePath, &statOfFile) < 0){
-        write(STDERR_FILENO, "Error while opening the file.\n",30);
+        write(STDERR_FILENO, "Error while opening the file. Please check\nUsage: ./hw4 -C consumerNum -N loopNum -F inputfilePath\n", 99);
         exit(EXIT_FAILURE);
     }
     if(statOfFile.st_size != 2*C*N && statOfFile.st_size != 2*C*N-1 && statOfFile.st_size != 2*C*N+1){
