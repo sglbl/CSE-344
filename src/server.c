@@ -163,7 +163,7 @@ void *threadJob(void *arg){
             }
         }
 
-        printf("Thread id-%ld is handling connection\n", threadId);
+        // printf("Thread id-%ld is handling connection\n", threadId);
         int newServerSocketFd = removeFromQueue();
         pthread_mutex_unlock(&csMutex);
         // pthread_cond_signal(&monitorCond);
@@ -252,7 +252,7 @@ void handleIncomingConnectionOfClient(int newServerSocketFd){
         }
         // Send info to corresponding servant to count transactions of that city
         int singleCityHandle = SINGLE_CITY_HANDLING;
-        int counter = getTransactionCountFromServant(singleCityHandle, responsibleServant, estateType, beginDate, endDate, cityName);
+        getTransactionCountFromServant(singleCityHandle, responsibleServant, estateType, beginDate, endDate, cityName);
 
     }
 

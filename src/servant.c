@@ -17,7 +17,7 @@
 #include "../include/common.h"
 
 static char *s_dirpath = "./";
-static int handledRequests = 0;
+// static int handledRequests = 0;
 static int s_portNoToListen = 59161;
 static volatile sig_atomic_t didSigIntCome = 0;
 static pthread_mutex_t csMutex;
@@ -318,6 +318,7 @@ void *handleIncomingConnection(void *arg){
     int beginningDate = gettingInfo->beginYear*365 + gettingInfo->beginMonth*30 + gettingInfo->beginDay;
     int endingDate = gettingInfo->endYear*365 + gettingInfo->endMonth*30 + gettingInfo->endDay;
     // checking the data structures of files between these days 
+    printf("Beginning date: %d, ending date: %d\n", beginningDate, endingDate);
     
 
 
