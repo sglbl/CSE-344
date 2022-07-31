@@ -23,7 +23,7 @@ Using;
 ### Homework 5
  Simulating the usage of POSIX threads to parallelize a couple of mathematical tasks.
  
-### Midterm
+### Midterm Project
  Simulating 2 process-pooled servers (Y and Z) executing on the same system as the clients. 
  Which;
   * Y and Z are daemon processes that have no controlling terminal.
@@ -34,5 +34,5 @@ Using;
   * Z have children process pool (workers) and delegates requests to its children using shared memory segment.
   * Client connects to server Y through the server fifo (given as a commandline argument), sends its request, receives its response through its client fifo, prints it to STDOUT and exit. (Also it exits gracefully in case of SIGINT)
 
-### Final
+### Final Project
   Simulating a connection system wihch have 3 programs. The servant processes will answer the requests coming from the server through sockets. The client will make requests to the server through sockets, and the server will respond to those requests via the information acquired from the servants. (Using  ip address and unique port numbers)
