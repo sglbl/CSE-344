@@ -20,7 +20,7 @@ Using;
   * tprintf=> Variadic function which uses snprintf() and vprintf() to act like a printf with timestamp.
   * detached thread (for supplier) and joinable threads (for clients)
 
-### [Homework 5](https://github.com/sglbl/CSE-344/tree/master/hw6)
+### [Homework 5](https://github.com/sglbl/CSE-344/tree/master/hw5)
  Simulating the usage of POSIX threads to parallelize a couple of mathematical tasks.
  
 ### [Midterm Project](https://github.com/sglbl/CSE-344/tree/master/midterm)
