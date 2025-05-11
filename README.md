@@ -35,4 +35,4 @@ Using;
   * Client connects to server Y through the server fifo (given as a commandline argument), sends its request, receives its response through its client fifo, prints it to STDOUT and exit. (Also it exits gracefully in case of SIGINT)
 
 ### [Final Project](https://github.com/sglbl/CSE-344/tree/master/final)
-  Simulating a connection system wihch have 3 programs. The servant processes will answer the requests coming from the server through sockets. The client will make requests to the server through sockets, and the server will respond to those requests via the information acquired from the servants. (Using  ip address and unique port numbers). It's not fully implemented due to time restrictions.
+  Simulating a connection system wihch have 3 programs. The servant processes will answer the requests coming from the server through sockets. The client will make requests to the server through sockets, and the server will respond to those requests via the information acquired from the servants. (Using  ip address and unique port numbers).
